@@ -1,0 +1,70 @@
+            ██████╗ ██████╗  ██████╗  ██████╗███████╗
+            ██╔══██╗██╔══██╗██╔═══██╗██╔════╝██╔════╝
+            ██████╔╝██████╔╝██║   ██║██║     █████╗
+            ██╔═══╝ ██╔══██╗██║   ██║██║     ██╔══╝
+            ██║     ██║  ██║╚██████╔╝╚██████╗███████╗
+            ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚══════╝
+
+                      Minimalist Process Monitor
+                   https://github.com/yourname/proclens
+
+─────────────────────────────────────────────────────────────
+
+ProcLens is a lightweight, terminal-based process monitor
+that reads /proc directly — no libraries, no bullshit.
+
+    1. Scans /proc for active PIDs
+    2. Reads VmRSS from /proc/[pid]/status
+    3. Displays in a clean ncurses TUI
+    4. Sorted by memory usage by default
+
+─────────────────────────────────────────────────────────────
+
+USAGE
+─────
+
+    make
+    ./proclens
+
+KEYS
+────
+
+    ↑ / k      Move selection up
+    ↓ / j      Move selection down
+    s          Cycle sort: RSS → PID → Name
+    /          Filter processes by name
+    k          Kill selected process (prompts confirmation)
+    + / =      Increase refresh interval
+    -          Decrease refresh interval
+    q          Quit
+
+BUILD
+─────
+
+Dependencies: ncurses, gcc (or any C99 compiler)
+
+    make          # Build proclens
+    make clean    # Remove binary
+
+Or compile manually:
+
+    gcc -Wall -Wextra -O2 -o proclens proclens.c -lncurses
+
+PHILOSOPHY
+──────────
+
+  • Minimal — one file, no bloat
+  • Transparent — reads /proc, shows what's there
+  • Efficient — no polling daemons, no background threads
+  • GPLv3 — free as in freedom, free as in beer
+
+LICENSE
+───────
+
+This program is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any
+later version.
+
+See the LICENSE file for details.
