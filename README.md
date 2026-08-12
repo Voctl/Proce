@@ -38,10 +38,8 @@ make
 
 Or:
 gcc -O2 -Wall -Wextra proclens.c -lncurses -o proclens
-```
 ─────────────────────────────────────────────────
 KEYS
-```
 j / ↓       down
 k / ↑       up
 s           change sorting
