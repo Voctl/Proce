@@ -1,13 +1,15 @@
-```         ██████╗ ██████╗  ██████╗  ██████╗███████╗
+```
+            ██████╗ ██████╗  ██████╗  ██████╗███████╗
             ██╔══██╗██╔══██╗██╔═══██╗██╔════╝██╔════╝
             ██████╔╝██████╔╝██║   ██║██║     █████╗
             ██╔═══╝ ██╔══██╗██║   ██║██║     ██╔══╝
             ██║     ██║  ██║╚██████╔╝╚██████╗███████╗
             ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚══════╝
 ```
-                      Tiny Process Viewer
-                https://github.com/Voctl/proclens
-─────────────────────────────────────────────────────────────
+
+                Tiny Process Viewer
+            https://github.com/Voctl/proclens
+─────────────────────────────────────────────────
 proclens is a tiny process viewer for Linux.
 
 It reads /proc directly and does one thing:
@@ -22,31 +24,32 @@ No nonsense.
 • shows PID, memory and name
 • sorts by memory usage
 • simple keyboard controls
-─────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────
 Screenshot
 
 <p align="center">
 <img src="docs/new.png" width="450">
 </p>
-─────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────
 BUILD
-
+```
 make
 ./proclens
 
 Or:
-
 gcc -O2 -Wall -Wextra proclens.c -lncurses -o proclens
-─────────────────────────────────────────────────────────────
+```
+─────────────────────────────────────────────────
 KEYS
-
+```
 j / ↓       down
 k / ↑       up
 s           change sorting
 /           filter
 x           kill process
 q           quit
-─────────────────────────────────────────────────────────────
+```
+─────────────────────────────────────────────────
 WHY?
 Because a process monitor doesn't need a framework,
 a daemon, an account, or 400 MB of dependencies.
@@ -56,7 +59,8 @@ Change it.
 Break it.
 Fix it.
 Share it.
-─────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────
+WHY?
 LICENSE
 GPLv3
 Free software.
