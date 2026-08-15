@@ -12,7 +12,7 @@ typedef struct {
     char name[256];
 } Process;
 
-enum { SORT_RSS, SORT_PID, SORT_NAME };
+enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_COUNT };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -58,6 +58,11 @@ static int cmp_pid_asc(const void *a, const void *b) {
 static int cmp_name_asc(const void *a, const void *b) {
     return strcmp(((const Process *)a)->name, ((const Process *)b)->name);
 }
+
+static int (*cmp_funcs[])(const void *, const void *) = {
+    cmp_rss_desc, cmp_pid_asc, cmp_name_asc
+};
+static const char *sort_labels[] = {"RSS", "PID", "Name"};
 
 static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
     if (kb >= 1048576)
@@ -134,11 +139,7 @@ int main(void) {
         }
         closedir(dp);
 
-        int (*cmp)(const void *, const void *) = cmp_rss_desc;
-        char sort_label[8] = "RSS";
-        if (sort_mode == SORT_PID)  { cmp = cmp_pid_asc;  strcpy(sort_label, "PID"); }
-        if (sort_mode == SORT_NAME) { cmp = cmp_name_asc; strcpy(sort_label, "Name"); }
-        qsort(procs, n, sizeof(Process), cmp);
+        qsort(procs, n, sizeof(Process), cmp_funcs[sort_mode]);
 
         int display_n = 0;
         for (int i = 0; i < n; i++) {
@@ -193,7 +194,7 @@ int main(void) {
                 break;
             }
             if (ch == 's') {
-                sort_mode = (sort_mode + 1) % 3;
+                sort_mode = (sort_mode + 1) % SORT_COUNT;
                 break;
             }
             if (ch == '/') {
@@ -243,8 +244,8 @@ int main(void) {
         mvprintw(0, 12, "Procs: %d", display_n);
         mvprintw(0, hdr_len, "Total: %s", mem_fmt);
         hdr_len += snprintf(NULL, 0, "Total: %s", mem_fmt);
-        mvprintw(0, hdr_len, " Sort: %s", sort_label);
-        hdr_len += snprintf(NULL, 0, " Sort: %s", sort_label);
+        mvprintw(0, hdr_len, " Sort: %s", sort_labels[sort_mode]);
+        hdr_len += snprintf(NULL, 0, " Sort: %s", sort_labels[sort_mode]);
         mvprintw(0, hdr_len, " %.1fs", intervals[interval_idx]);
         attrset(COLOR_PAIR(3));
         mvprintw(0, maxx - 11, "[q] quit");
