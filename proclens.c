@@ -28,6 +28,15 @@ enum {
     ASCII_MAX = 126
 };
 
+enum {
+    CP_GREEN = 1,
+    CP_CYAN,
+    CP_YELLOW,
+    CP_RED,
+    CP_WHITE,
+    CP_HIGHLIGHT
+};
+
 static double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
 static int parse_proc(int pid, unsigned long *rss, char *name) {
@@ -96,12 +105,12 @@ int main(void) {
     }
     start_color();
     use_default_colors();
-    init_pair(1, COLOR_GREEN, -1);
-    init_pair(2, COLOR_CYAN, -1);
-    init_pair(3, COLOR_YELLOW, -1);
-    init_pair(4, COLOR_RED, -1);
-    init_pair(5, COLOR_WHITE, -1);
-    init_pair(6, COLOR_BLACK, COLOR_CYAN);
+    init_pair(CP_GREEN, COLOR_GREEN, -1);
+    init_pair(CP_CYAN, COLOR_CYAN, -1);
+    init_pair(CP_YELLOW, COLOR_YELLOW, -1);
+    init_pair(CP_RED, COLOR_RED, -1);
+    init_pair(CP_WHITE, COLOR_WHITE, -1);
+    init_pair(CP_HIGHLIGHT, COLOR_BLACK, COLOR_CYAN);
 
     Process *procs = NULL;
     int cap = 0;
@@ -245,7 +254,7 @@ int main(void) {
         char mem_fmt[32];
         fmt_mem(mem_fmt, sizeof(mem_fmt), total_ram);
 
-        attrset(COLOR_PAIR(1) | A_BOLD);
+        attrset(COLOR_PAIR(CP_GREEN) | A_BOLD);
         mvprintw(0, 0, "\u250c ProcLens ");
         int hdr_len = 12;
         hdr_len += snprintf(NULL, 0, "Procs: %d", display_n);
@@ -255,7 +264,7 @@ int main(void) {
         mvprintw(0, hdr_len, " Sort: %s", sort_labels[sort_mode]);
         hdr_len += snprintf(NULL, 0, " Sort: %s", sort_labels[sort_mode]);
         mvprintw(0, hdr_len, " %.1fs", intervals[interval_idx]);
-        attrset(COLOR_PAIR(3));
+        attrset(COLOR_PAIR(CP_YELLOW));
         mvprintw(0, maxx - 11, "[q] quit");
         attrset(A_NORMAL);
 
@@ -263,7 +272,7 @@ int main(void) {
         mvaddch(1, 0, ACS_LTEE);
         mvaddch(1, maxx - 1, ACS_RTEE);
 
-        attrset(COLOR_PAIR(2) | A_BOLD);
+        attrset(COLOR_PAIR(CP_CYAN) | A_BOLD);
         mvprintw(1, 2, "%-7s %11s  %s", "PID", "RSS", "NAME");
         attrset(A_NORMAL);
 
@@ -275,15 +284,15 @@ int main(void) {
         int avail_rows = maxy - 1;
         for (int i = 0; i < display_n && row < avail_rows; i++) {
             if (i == selected) {
-                attrset(COLOR_PAIR(6));
+                attrset(COLOR_PAIR(CP_HIGHLIGHT));
             } else if (i % 2 == 0) {
-                attrset(COLOR_PAIR(5));
+                attrset(COLOR_PAIR(CP_WHITE));
             } else {
-                attrset(COLOR_PAIR(3));
+                attrset(COLOR_PAIR(CP_YELLOW));
             }
 
             if (i != selected && procs[i].rss_kb > RSS_GIB)
-                attrset(COLOR_PAIR(4) | A_BOLD);
+                attrset(COLOR_PAIR(CP_RED) | A_BOLD);
 
             char mem[32];
             fmt_mem(mem, sizeof(mem), procs[i].rss_kb);
