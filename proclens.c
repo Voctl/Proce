@@ -6,10 +6,12 @@
 #include <ncurses.h>
 #include <signal.h>
 
+#define NAME_MAX_LEN 15
+
 typedef struct {
     int pid;
     unsigned long rss_kb;
-    char name[256];
+    char name[NAME_MAX_LEN + 1];
 } Process;
 
 enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_COUNT };
@@ -49,7 +51,7 @@ static int parse_proc(int pid, unsigned long *rss, char *name) {
     int found = 0;
     while (fgets(line, sizeof(line), fp) && found < 2) {
         if (strncmp(line, "Name:", 5) == 0) {
-            sscanf(line + 5, " %255s", name);
+            sscanf(line + 5, " %15s", name);
             found++;
         } else if (strncmp(line, "VmRSS:", 6) == 0) {
             sscanf(line + 6, " %lu", rss);
