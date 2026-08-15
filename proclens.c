@@ -37,7 +37,7 @@ enum {
     CP_HIGHLIGHT
 };
 
-static double intervals[] = {0.5, 1.0, 2.0, 5.0};
+static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
 static int parse_proc(int pid, unsigned long *rss, char *name) {
     char path[64], line[256];
