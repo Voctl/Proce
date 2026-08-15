@@ -113,27 +113,17 @@ int main(void) {
         if (!dp) break;
 
         struct dirent *entry;
-        int count = 0;
-        while ((entry = readdir(dp))) {
-            if (atoi(entry->d_name) > 0) count++;
-        }
-        closedir(dp);
-
-        if (count > cap) {
-            cap = count + 64;
-            Process *tmp = realloc(procs, cap * sizeof(Process));
-            if (!tmp) break;
-            procs = tmp;
-        }
-
-        dp = opendir("/proc");
-        if (!dp) break;
-
         int n = 0;
         unsigned long total_ram = 0;
         while ((entry = readdir(dp))) {
             int pid = atoi(entry->d_name);
             if (pid <= 0) continue;
+            if (n >= cap) {
+                cap = n + 64;
+                Process *tmp = realloc(procs, cap * sizeof(Process));
+                if (!tmp) break;
+                procs = tmp;
+            }
             if (parse_proc(pid, &procs[n].rss_kb, procs[n].name) == 0) {
                 procs[n].pid = pid;
                 total_ram += procs[n].rss_kb;
