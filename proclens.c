@@ -54,17 +54,13 @@ static int parse_proc(int pid, unsigned long *rss, char *name) {
 static int cmp_rss_desc(const void *a, const void *b) {
     unsigned long ra = ((const Process *)a)->rss_kb;
     unsigned long rb = ((const Process *)b)->rss_kb;
-    if (ra < rb) return 1;
-    if (ra > rb) return -1;
-    return 0;
+    return (rb > ra) - (rb < ra);
 }
 
 static int cmp_pid_asc(const void *a, const void *b) {
     int pa = ((const Process *)a)->pid;
     int pb = ((const Process *)b)->pid;
-    if (pa < pb) return -1;
-    if (pa > pb) return 1;
-    return 0;
+    return (pa > pb) - (pa < pb);
 }
 
 static int cmp_name_asc(const void *a, const void *b) {
