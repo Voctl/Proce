@@ -7,12 +7,22 @@
 #include <signal.h>
 
 #define NAME_MAX_LEN 15
+#define FILTER_MAX 128
 
 typedef struct {
     int pid;
     unsigned long rss_kb;
     char name[NAME_MAX_LEN + 1];
 } Process;
+
+typedef struct {
+    int sort_mode;
+    char filter[FILTER_MAX];
+    int filter_len;
+    int filter_active;
+    int selected;
+    int interval_idx;
+} UIState;
 
 enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_COUNT };
 
@@ -117,12 +127,14 @@ int main(void) {
     Process *procs = NULL;
     int cap = 0;
 
-    int sort_mode = SORT_RSS;
-    char filter[128] = "";
-    int filter_len = 0;
-    int filter_active = 0;
-    int selected = 0;
-    int interval_idx = 1;
+    UIState ui = {
+        .sort_mode = SORT_RSS,
+        .filter = "",
+        .filter_len = 0,
+        .filter_active = 0,
+        .selected = 0,
+        .interval_idx = 1
+    };
 
     while (1) {
         int maxy, maxx;
@@ -158,42 +170,42 @@ int main(void) {
         }
         closedir(dp);
 
-        qsort(procs, n, sizeof(Process), cmp_funcs[sort_mode]);
+        qsort(procs, n, sizeof(Process), cmp_funcs[ui.sort_mode]);
 
         int display_n = 0;
         for (int i = 0; i < n; i++) {
             if (procs[i].rss_kb == 0) continue;
-            if (filter[0] && !strstr(procs[i].name, filter)) continue;
+            if (ui.filter[0] && !strstr(procs[i].name, ui.filter)) continue;
             if (i != display_n)
                 procs[display_n] = procs[i];
             display_n++;
         }
 
-        if (selected >= display_n) selected = display_n ? display_n - 1 : 0;
-        if (selected < 0) selected = 0;
+        if (ui.selected >= display_n) ui.selected = display_n ? display_n - 1 : 0;
+        if (ui.selected < 0) ui.selected = 0;
 
-        timeout((int)(intervals[interval_idx] * 1000));
+        timeout((int)(intervals[ui.interval_idx] * 1000));
 
         int ch = 0;
         while (1) {
             ch = getch();
             if (ch == ERR) break;
 
-            if (filter_active) {
+            if (ui.filter_active) {
                 if (ch == KEY_ESC) {
-                    filter_active = 0;
-                    filter[0] = '\0';
-                    filter_len = 0;
+                    ui.filter_active = 0;
+                    ui.filter[0] = '\0';
+                    ui.filter_len = 0;
                 } else if (ch == '\n' || ch == KEY_ENTER) {
-                    filter_active = 0;
+                    ui.filter_active = 0;
                 } else if (ch == KEY_BACKSPACE || ch == KEY_BS1 || ch == KEY_BS2) {
-                    if (filter_len > 0) {
-                        filter[--filter_len] = '\0';
+                    if (ui.filter_len > 0) {
+                        ui.filter[--ui.filter_len] = '\0';
                     }
                 } else if (ch >= ASCII_MIN && ch <= ASCII_MAX) {
-                    if (filter_len < (int)sizeof(filter) - 2) {
-                        filter[filter_len++] = (char)ch;
-                        filter[filter_len] = '\0';
+                    if (ui.filter_len < (int)sizeof(ui.filter) - 2) {
+                        ui.filter[ui.filter_len++] = (char)ch;
+                        ui.filter[ui.filter_len] = '\0';
                     }
                 }
                 break;
@@ -205,26 +217,26 @@ int main(void) {
                 return 0;
             }
             if (ch == KEY_UP) {
-                if (selected > 0) selected--;
+                if (ui.selected > 0) ui.selected--;
                 break;
             }
             if (ch == KEY_DOWN || ch == 'j') {
-                if (selected < display_n - 1) selected++;
+                if (ui.selected < display_n - 1) ui.selected++;
                 break;
             }
             if (ch == 's') {
-                sort_mode = (sort_mode + 1) % SORT_COUNT;
+                ui.sort_mode = (ui.sort_mode + 1) % SORT_COUNT;
                 break;
             }
             if (ch == '/') {
-                filter_active = 1;
-                filter[0] = '\0';
-                filter_len = 0;
+                ui.filter_active = 1;
+                ui.filter[0] = '\0';
+                ui.filter_len = 0;
                 curs_set(1);
                 break;
             }
             if (ch == 'k' && display_n > 0) {
-                int target = procs[selected].pid;
+                int target = procs[ui.selected].pid;
                 curs_set(1);
                 mvprintw(maxy - 1, 0, " Kill PID %d? (y/N): ", target);
                 clrtoeol();
@@ -236,15 +248,15 @@ int main(void) {
                 break;
             }
             if (ch == '+' || ch == '=') {
-                if (interval_idx < (int)ARRAY_SIZE(intervals) - 1) interval_idx++;
+                if (ui.interval_idx < (int)ARRAY_SIZE(intervals) - 1) ui.interval_idx++;
                 break;
             }
             if (ch == '-') {
-                if (interval_idx > 0) interval_idx--;
+                if (ui.interval_idx > 0) ui.interval_idx--;
                 break;
             }
             if (ch == KEY_RESIZE) {
-                if (filter_active) curs_set(0);
+                if (ui.filter_active) curs_set(0);
                 break;
             }
         }
@@ -263,9 +275,9 @@ int main(void) {
         mvprintw(0, 12, "Procs: %d", display_n);
         mvprintw(0, hdr_len, "Total: %s", mem_fmt);
         hdr_len += snprintf(NULL, 0, "Total: %s", mem_fmt);
-        mvprintw(0, hdr_len, " Sort: %s", sort_labels[sort_mode]);
-        hdr_len += snprintf(NULL, 0, " Sort: %s", sort_labels[sort_mode]);
-        mvprintw(0, hdr_len, " %.1fs", intervals[interval_idx]);
+        mvprintw(0, hdr_len, " Sort: %s", sort_labels[ui.sort_mode]);
+        hdr_len += snprintf(NULL, 0, " Sort: %s", sort_labels[ui.sort_mode]);
+        mvprintw(0, hdr_len, " %.1fs", intervals[ui.interval_idx]);
         attrset(COLOR_PAIR(CP_YELLOW));
         mvprintw(0, maxx - 11, "[q] quit");
         attrset(A_NORMAL);
@@ -285,7 +297,7 @@ int main(void) {
         int row = 3;
         int avail_rows = maxy - 1;
         for (int i = 0; i < display_n && row < avail_rows; i++) {
-            if (i == selected) {
+            if (i == ui.selected) {
                 attrset(COLOR_PAIR(CP_HIGHLIGHT));
             } else if (i % 2 == 0) {
                 attrset(COLOR_PAIR(CP_WHITE));
@@ -293,7 +305,7 @@ int main(void) {
                 attrset(COLOR_PAIR(CP_YELLOW));
             }
 
-            if (i != selected && procs[i].rss_kb > RSS_GIB)
+            if (i != ui.selected && procs[i].rss_kb > RSS_GIB)
                 attrset(COLOR_PAIR(CP_RED) | A_BOLD);
 
             char mem[32];
@@ -314,9 +326,9 @@ int main(void) {
             mvaddch(r, maxx - 1, ACS_VLINE);
         }
 
-        if (filter_active) {
+        if (ui.filter_active) {
             curs_set(1);
-            mvprintw(avail_rows, 0, " Filter: %s", filter);
+            mvprintw(avail_rows, 0, " Filter: %s", ui.filter);
             clrtoeol();
         }
 
