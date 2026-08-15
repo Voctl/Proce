@@ -18,17 +18,21 @@ static double intervals[] = {0.5, 1.0, 2.0, 5.0};
 static int n_intervals = 4;
 
 static int parse_proc(int pid, unsigned long *rss, char *name) {
-    char path[256], line[256];
+    char path[64], line[256];
     snprintf(path, sizeof(path), "/proc/%d/status", pid);
     FILE *fp = fopen(path, "r");
     if (!fp) return -1;
     *rss = 0;
     name[0] = '\0';
-    while (fgets(line, sizeof(line), fp)) {
-        if (strncmp(line, "Name:", 5) == 0)
+    int found = 0;
+    while (fgets(line, sizeof(line), fp) && found < 2) {
+        if (strncmp(line, "Name:", 5) == 0) {
             sscanf(line + 5, " %255s", name);
-        else if (strncmp(line, "VmRSS:", 6) == 0)
+            found++;
+        } else if (strncmp(line, "VmRSS:", 6) == 0) {
             sscanf(line + 6, " %lu", rss);
+            found++;
+        }
     }
     fclose(fp);
     return 0;
