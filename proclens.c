@@ -16,6 +16,18 @@ enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_COUNT };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
+enum {
+    KEY_ESC = 27,
+    KEY_BS1 = 127,
+    KEY_BS2 = 8,
+    MIN_COLS = 50,
+    MIN_ROWS = 5,
+    RSS_GIB = 1048576,
+    RSS_MIB = 1024,
+    ASCII_MIN = 32,
+    ASCII_MAX = 126
+};
+
 static double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
 static int parse_proc(int pid, unsigned long *rss, char *name) {
@@ -65,10 +77,10 @@ static int (*cmp_funcs[])(const void *, const void *) = {
 static const char *sort_labels[] = {"RSS", "PID", "Name"};
 
 static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
-    if (kb >= 1048576)
-        snprintf(buf, sz, "%.2f GiB", kb / 1048576.0);
-    else if (kb >= 1024)
-        snprintf(buf, sz, "%.1f MiB", kb / 1024.0);
+    if (kb >= RSS_GIB)
+        snprintf(buf, sz, "%.2f GiB", kb / (double)RSS_GIB);
+    else if (kb >= RSS_MIB)
+        snprintf(buf, sz, "%.1f MiB", kb / (double)RSS_MIB);
     else
         snprintf(buf, sz, "%lu KiB", kb);
 }
@@ -108,9 +120,9 @@ int main(void) {
     while (1) {
         int maxy, maxx;
         getmaxyx(stdscr, maxy, maxx);
-        if (maxx < 50 || maxy < 5) {
+        if (maxx < MIN_COLS || maxy < MIN_ROWS) {
             erase();
-            mvprintw(0, 0, "Terminal too small (%dx%d), need at least 50x5", maxx, maxy);
+            mvprintw(0, 0, "Terminal too small (%dx%d), need at least %dx%d", maxx, maxy, MIN_COLS, MIN_ROWS);
             refresh();
             if (getch() == 'q') break;
             continue;
@@ -161,17 +173,17 @@ int main(void) {
             if (ch == ERR) break;
 
             if (filter_active) {
-                if (ch == 27) {
+                if (ch == KEY_ESC) {
                     filter_active = 0;
                     filter[0] = '\0';
                     filter_len = 0;
                 } else if (ch == '\n' || ch == KEY_ENTER) {
                     filter_active = 0;
-                } else if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
+                } else if (ch == KEY_BACKSPACE || ch == KEY_BS1 || ch == KEY_BS2) {
                     if (filter_len > 0) {
                         filter[--filter_len] = '\0';
                     }
-                } else if (ch >= 32 && ch <= 126) {
+                } else if (ch >= ASCII_MIN && ch <= ASCII_MAX) {
                     if (filter_len < (int)sizeof(filter) - 2) {
                         filter[filter_len++] = (char)ch;
                         filter[filter_len] = '\0';
@@ -274,7 +286,7 @@ int main(void) {
                 attrset(COLOR_PAIR(3));
             }
 
-            if (i != selected && procs[i].rss_kb > 1048576)
+            if (i != selected && procs[i].rss_kb > RSS_GIB)
                 attrset(COLOR_PAIR(4) | A_BOLD);
 
             char mem[32];
