@@ -286,11 +286,9 @@ skip_draw:
         mvaddch(0, 0, ACS_ULCORNER);
         mvaddch(0, maxx - 1, ACS_URCORNER);
 
-        for (int r = 1; r < avail_rows; r++) {
-            if (mvinch(r, 0) == ' ') {
-                mvaddch(r, 0, ACS_VLINE);
-                mvaddch(r, maxx - 1, ACS_VLINE);
-            }
+        for (int r = 2; r < avail_rows; r++) {
+            mvaddch(r, 0, ACS_VLINE);
+            mvaddch(r, maxx - 1, ACS_VLINE);
         }
 
         if (filter_active) {
