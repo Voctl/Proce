@@ -167,8 +167,8 @@ int main(void) {
                     int len = strlen(filter);
                     if (len > 0) filter[len - 1] = '\0';
                 } else if (ch >= 32 && ch <= 126) {
-                    size_t len = strlen(filter);
-                    if (len < sizeof(filter) - 1) {
+                    int len = strlen(filter);
+                    if (len < (int)sizeof(filter) - 2) {
                         filter[len] = (char)ch;
                         filter[len + 1] = '\0';
                     }
@@ -228,9 +228,6 @@ int main(void) {
 skip_draw:
         if (ch == KEY_RESIZE) continue;
 
-        if (filter_active)
-            curs_set(0);
-
         erase();
 
         char mem_fmt[32];
@@ -238,14 +235,14 @@ skip_draw:
 
         attrset(COLOR_PAIR(1) | A_BOLD);
         mvprintw(0, 0, "\u250c ProcLens ");
-        int x = 12;
-        mvprintw(0, x, "Procs: %d", display_n);
-        x += 9 + (display_n >= 1000 ? 4 : display_n >= 100 ? 3 : display_n >= 10 ? 2 : 1);
-        mvprintw(0, x, "Total: %s", mem_fmt);
-        x += 7 + (int)strlen(mem_fmt);
-        mvprintw(0, x, " Sort: %s", sort_label);
-        x += 7 + (int)strlen(sort_label);
-        mvprintw(0, x, " %.1fs", intervals[interval_idx]);
+        int hdr_len = 12;
+        hdr_len += snprintf(NULL, 0, "Procs: %d", display_n);
+        mvprintw(0, 12, "Procs: %d", display_n);
+        mvprintw(0, hdr_len, "Total: %s", mem_fmt);
+        hdr_len += snprintf(NULL, 0, "Total: %s", mem_fmt);
+        mvprintw(0, hdr_len, " Sort: %s", sort_label);
+        hdr_len += snprintf(NULL, 0, " Sort: %s", sort_label);
+        mvprintw(0, hdr_len, " %.1fs", intervals[interval_idx]);
         attrset(COLOR_PAIR(3));
         mvprintw(0, maxx - 11, "[q] quit");
         attrset(A_NORMAL);
