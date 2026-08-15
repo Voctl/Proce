@@ -95,6 +95,7 @@ int main(void) {
 
     int sort_mode = SORT_RSS;
     char filter[128] = "";
+    int filter_len = 0;
     int filter_active = 0;
     int selected = 0;
     int interval_idx = 1;
@@ -162,16 +163,17 @@ int main(void) {
                 if (ch == 27) {
                     filter_active = 0;
                     filter[0] = '\0';
+                    filter_len = 0;
                 } else if (ch == '\n' || ch == KEY_ENTER) {
                     filter_active = 0;
                 } else if (ch == KEY_BACKSPACE || ch == 127 || ch == 8) {
-                    int len = strlen(filter);
-                    if (len > 0) filter[len - 1] = '\0';
+                    if (filter_len > 0) {
+                        filter[--filter_len] = '\0';
+                    }
                 } else if (ch >= 32 && ch <= 126) {
-                    int len = strlen(filter);
-                    if (len < (int)sizeof(filter) - 2) {
-                        filter[len] = (char)ch;
-                        filter[len + 1] = '\0';
+                    if (filter_len < (int)sizeof(filter) - 2) {
+                        filter[filter_len++] = (char)ch;
+                        filter[filter_len] = '\0';
                     }
                 }
                 break;
@@ -197,6 +199,7 @@ int main(void) {
             if (ch == '/') {
                 filter_active = 1;
                 filter[0] = '\0';
+                filter_len = 0;
                 curs_set(1);
                 break;
             }
