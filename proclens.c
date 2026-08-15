@@ -14,8 +14,9 @@ typedef struct {
 
 enum { SORT_RSS, SORT_PID, SORT_NAME };
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
 static double intervals[] = {0.5, 1.0, 2.0, 5.0};
-static int n_intervals = 4;
 
 static int parse_proc(int pid, unsigned long *rss, char *name) {
     char path[64], line[256];
@@ -181,7 +182,7 @@ int main(void) {
                 endwin();
                 return 0;
             }
-            if (ch == KEY_UP || ch == 'k') {
+            if (ch == KEY_UP) {
                 if (selected > 0) selected--;
                 break;
             }
@@ -212,7 +213,7 @@ int main(void) {
                 break;
             }
             if (ch == '+' || ch == '=') {
-                if (interval_idx < n_intervals - 1) interval_idx++;
+                if (interval_idx < (int)ARRAY_SIZE(intervals) - 1) interval_idx++;
                 break;
             }
             if (ch == '-') {
