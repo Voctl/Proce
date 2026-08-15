@@ -222,11 +222,10 @@ int main(void) {
             }
             if (ch == KEY_RESIZE) {
                 if (filter_active) curs_set(0);
-                goto skip_draw;
+                break;
             }
         }
 
-skip_draw:
         if (ch == KEY_RESIZE) continue;
 
         erase();
