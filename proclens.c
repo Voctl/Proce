@@ -22,6 +22,7 @@ typedef struct {
     int filter_active;
     int selected;
     int interval_idx;
+    int show_help;
 } UIState;
 
 enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_COUNT };
@@ -133,7 +134,8 @@ int main(void) {
         .filter_len = 0,
         .filter_active = 0,
         .selected = 0,
-        .interval_idx = 1
+        .interval_idx = 1,
+        .show_help = 0
     };
 
     while (1) {
@@ -259,6 +261,10 @@ int main(void) {
                 if (ui.filter_active) curs_set(0);
                 break;
             }
+            if (ch == '?') {
+                ui.show_help = !ui.show_help;
+                break;
+            }
         }
 
         if (ch == KEY_RESIZE) continue;
@@ -330,6 +336,24 @@ int main(void) {
             curs_set(1);
             mvprintw(avail_rows, 0, " Filter: %s", ui.filter);
             clrtoeol();
+        }
+
+        if (ui.show_help) {
+            int hy = maxy / 2 - 3;
+            int hx = maxx / 2 - 18;
+            attrset(COLOR_PAIR(CP_HIGHLIGHT));
+            for (int r = hy; r < hy + 9 && r < avail_rows; r++) {
+                mvhline(r, hx, ' ', 36);
+            }
+            mvprintw(hy + 0, hx, " [?] Toggle help");
+            mvprintw(hy + 1, hx, " [j/Down] Move down");
+            mvprintw(hy + 2, hx, " [Up]     Move up");
+            mvprintw(hy + 3, hx, " [s]      Cycle sort");
+            mvprintw(hy + 4, hx, " [/]      Filter");
+            mvprintw(hy + 5, hx, " [+/-]    Change interval");
+            mvprintw(hy + 6, hx, " [k]      Kill process");
+            mvprintw(hy + 7, hx, " [q]      Quit");
+            attrset(A_NORMAL);
         }
 
         refresh();
