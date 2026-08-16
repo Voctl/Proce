@@ -97,12 +97,14 @@ static int (* const cmp_funcs[])(const void *, const void *) = {
 static const char * const sort_labels[] = {"RSS", "PID", "Name"};
 
 static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
+    int n;
     if (kb >= RSS_GIB)
-        snprintf(buf, sz, "%.2f GiB", kb / (double)RSS_GIB);
+        n = snprintf(buf, sz, "%.2f GiB", kb / (double)RSS_GIB);
     else if (kb >= RSS_MIB)
-        snprintf(buf, sz, "%.1f MiB", kb / (double)RSS_MIB);
+        n = snprintf(buf, sz, "%.1f MiB", kb / (double)RSS_MIB);
     else
-        snprintf(buf, sz, "%lu KiB", kb);
+        n = snprintf(buf, sz, "%lu KiB", kb);
+    (void)n;
 }
 
 int main(void) {
