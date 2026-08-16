@@ -160,7 +160,9 @@ int main(void) {
         int n = 0;
         unsigned long total_ram = 0;
         while ((entry = readdir(dp))) {
-            int pid = (int)strtol(entry->d_name, NULL, 10);
+            const char *d = entry->d_name;
+            if (d[0] < '1' || d[0] > '9') continue;
+            int pid = (int)strtol(d, NULL, 10);
             if (pid <= 0) continue;
             if (n >= cap) {
                 cap = cap ? cap * 2 : 64;
