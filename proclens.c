@@ -340,13 +340,12 @@ int main(void) {
         mvhline(avail_rows, 0, ACS_HLINE, maxx);
         mvaddch(avail_rows, 0, ACS_LLCORNER);
         mvaddch(avail_rows, maxx - 1, ACS_LRCORNER);
-        mvaddch(0, 0, ACS_ULCORNER);
-        mvaddch(0, maxx - 1, ACS_URCORNER);
-
-        for (int r = 2; r < avail_rows; r++) {
+        for (int r = 1; r < avail_rows; r++) {
             mvaddch(r, 0, ACS_VLINE);
             mvaddch(r, maxx - 1, ACS_VLINE);
         }
+        mvaddch(0, 0, ACS_ULCORNER);
+        mvaddch(0, maxx - 1, ACS_URCORNER);
 
         if (ui.filter_active) {
             curs_set(1);
