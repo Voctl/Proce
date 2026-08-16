@@ -271,7 +271,7 @@ int main(void) {
 
         erase();
 
-        char mem_fmt[32];
+        char mem_fmt[24];
         fmt_mem(mem_fmt, sizeof(mem_fmt), total_ram);
 
         attrset(COLOR_PAIR(CP_GREEN) | A_BOLD);
@@ -314,7 +314,7 @@ int main(void) {
             if (i != ui.selected && procs[i].rss_kb > RSS_GIB)
                 attrset(COLOR_PAIR(CP_RED) | A_BOLD);
 
-            char mem[32];
+            char mem[24];
             fmt_mem(mem, sizeof(mem), procs[i].rss_kb);
             mvprintw(row, 2, "%-7d %11s  %s", procs[i].pid, mem, procs[i].name);
             row++;
