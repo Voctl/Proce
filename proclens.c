@@ -122,12 +122,12 @@ int main(void) {
     }
     start_color();
     use_default_colors();
-    init_pair(CP_GREEN, COLOR_GREEN, -1);
-    init_pair(CP_CYAN, COLOR_CYAN, -1);
-    init_pair(CP_YELLOW, COLOR_YELLOW, -1);
-    init_pair(CP_RED, COLOR_RED, -1);
-    init_pair(CP_WHITE, COLOR_WHITE, -1);
-    init_pair(CP_HIGHLIGHT, COLOR_BLACK, COLOR_CYAN);
+    static const struct { int fg, bg; } cpairs[] = {
+        {COLOR_GREEN, -1}, {COLOR_CYAN, -1}, {COLOR_YELLOW, -1},
+        {COLOR_RED, -1}, {COLOR_WHITE, -1}, {COLOR_BLACK, COLOR_CYAN}
+    };
+    for (int i = 0; i < (int)ARRAY_SIZE(cpairs); i++)
+        init_pair(i + 1, cpairs[i].fg, cpairs[i].bg);
 
     Process *procs = NULL;
     int cap = 0;
