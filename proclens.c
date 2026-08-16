@@ -28,6 +28,8 @@ typedef struct {
 enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_COUNT };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define likely(x)   __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
 
 enum {
     KEY_ESC = 27,
@@ -56,7 +58,7 @@ static int parse_proc(int pid, unsigned long *rss, char *name) {
     char path[32], line[128];
     snprintf(path, sizeof(path), "/proc/%d/status", pid);
     FILE *fp = fopen(path, "r");
-    if (!fp) return -1;
+    if (unlikely(!fp)) return -1;
     *rss = 0;
     name[0] = '\0';
     int found = 0;
@@ -141,7 +143,7 @@ int main(void) {
     while (1) {
         int maxy, maxx;
         getmaxyx(stdscr, maxy, maxx);
-        if (maxx < MIN_COLS || maxy < MIN_ROWS) {
+        if (unlikely(maxx < MIN_COLS || maxy < MIN_ROWS)) {
             erase();
             mvprintw(0, 0, "Terminal too small (%dx%d), need at least %dx%d", maxx, maxy, MIN_COLS, MIN_ROWS);
             refresh();
@@ -150,7 +152,7 @@ int main(void) {
         }
 
         DIR *dp = opendir("/proc");
-        if (!dp) break;
+        if (unlikely(!dp)) break;
 
         struct dirent *entry;
         int n = 0;
@@ -161,7 +163,7 @@ int main(void) {
             if (n >= cap) {
                 cap = cap ? cap * 2 : 64;
                 Process *tmp = realloc(procs, cap * sizeof(Process));
-                if (!tmp) break;
+                if (unlikely(!tmp)) break;
                 procs = tmp;
             }
             if (parse_proc(pid, &procs[n].rss_kb, procs[n].name) == 0) {
@@ -191,7 +193,7 @@ int main(void) {
         int ch = 0;
         while (1) {
             ch = getch();
-            if (ch == ERR) break;
+            if (likely(ch == ERR)) break;
 
             if (ui.filter_active) {
                 if (ch == KEY_ESC) {
