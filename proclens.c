@@ -7,7 +7,7 @@
 #include <signal.h>
 
 #define NAME_MAX_LEN 15
-#define FILTER_MAX 128
+#define FILTER_MAX 64
 
 typedef struct {
     int pid;
