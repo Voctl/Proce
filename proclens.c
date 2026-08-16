@@ -159,7 +159,7 @@ int main(void) {
             int pid = (int)strtol(entry->d_name, NULL, 10);
             if (pid <= 0) continue;
             if (n >= cap) {
-                cap = n + 64;
+                cap = cap ? cap * 2 : 64;
                 Process *tmp = realloc(procs, cap * sizeof(Process));
                 if (!tmp) break;
                 procs = tmp;
