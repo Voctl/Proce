@@ -341,20 +341,19 @@ int main(void) {
         }
 
         if (ui.show_help) {
+            static const char * const help_lines[] = {
+                " [?] Toggle help",  " [j/Down] Move down",
+                " [Up]     Move up", " [s]      Cycle sort",
+                " [/]      Filter",  " [+/-]    Change interval",
+                " [k]      Kill process", " [q]      Quit"
+            };
             int hy = maxy / 2 - 3;
             int hx = maxx / 2 - 18;
             attrset(COLOR_PAIR(CP_HIGHLIGHT));
-            for (int r = hy; r < hy + 9 && r < avail_rows; r++) {
+            for (int r = hy; r < hy + 9 && r < avail_rows; r++)
                 mvhline(r, hx, ' ', 36);
-            }
-            mvprintw(hy + 0, hx, " [?] Toggle help");
-            mvprintw(hy + 1, hx, " [j/Down] Move down");
-            mvprintw(hy + 2, hx, " [Up]     Move up");
-            mvprintw(hy + 3, hx, " [s]      Cycle sort");
-            mvprintw(hy + 4, hx, " [/]      Filter");
-            mvprintw(hy + 5, hx, " [+/-]    Change interval");
-            mvprintw(hy + 6, hx, " [k]      Kill process");
-            mvprintw(hy + 7, hx, " [q]      Quit");
+            for (int i = 0; i < (int)ARRAY_SIZE(help_lines); i++)
+                mvprintw(hy + i, hx, "%s", help_lines[i]);
             attrset(A_NORMAL);
         }
 
