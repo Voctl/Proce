@@ -179,9 +179,10 @@ int main(void) {
         qsort(procs, n, sizeof(Process), cmp_funcs[ui.sort_mode]);
 
         int display_n = 0;
+        int filter_active = ui.filter[0] != '\0';
         for (int i = 0; i < n; i++) {
             if (procs[i].rss_kb == 0) continue;
-            if (ui.filter[0] && !strstr(procs[i].name, ui.filter)) continue;
+            if (filter_active && !strstr(procs[i].name, ui.filter)) continue;
             if (i != display_n)
                 procs[display_n] = procs[i];
             display_n++;
