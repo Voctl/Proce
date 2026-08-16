@@ -89,10 +89,10 @@ static int cmp_name_asc(const void *a, const void *b) {
     return strcmp(((const Process *)a)->name, ((const Process *)b)->name);
 }
 
-static int (*cmp_funcs[])(const void *, const void *) = {
+static int (* const cmp_funcs[])(const void *, const void *) = {
     cmp_rss_desc, cmp_pid_asc, cmp_name_asc
 };
-static const char *sort_labels[] = {"RSS", "PID", "Name"};
+static const char * const sort_labels[] = {"RSS", "PID", "Name"};
 
 static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
     if (kb >= RSS_GIB)
