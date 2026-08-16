@@ -63,25 +63,11 @@ static int parse_proc(int pid, unsigned long *rss, char *name) {
     name[0] = '\0';
     int found = 0;
     while (fgets(line, sizeof(line), fp) && found < 2) {
-        if (strncmp(line, "Name:", 5) == 0) {
-            char *p = line + 5;
-            while (*p == ' ' || *p == '\t') p++;
-            int i = 0;
-            while (p[i] && p[i] != '\n' && p[i] != '\t' && i < NAME_MAX_LEN) {
-                name[i] = p[i];
-                i++;
-            }
-            name[i] = '\0';
+        unsigned long tmp;
+        if (sscanf(line, "Name: %15s", name) == 1)
             found++;
-        } else if (strncmp(line, "VmRSS:", 6) == 0) {
-            char *p = line + 6;
-            while (*p == ' ' || *p == '\t') p++;
-            unsigned long v = 0;
-            while (*p >= '0' && *p <= '9') {
-                v = v * 10 + (*p - '0');
-                p++;
-            }
-            *rss = v;
+        else if (sscanf(line, "VmRSS: %lu", &tmp) == 1) {
+            *rss = tmp;
             found++;
         }
     }
