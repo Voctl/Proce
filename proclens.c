@@ -156,7 +156,7 @@ int main(void) {
         int n = 0;
         unsigned long total_ram = 0;
         while ((entry = readdir(dp))) {
-            int pid = atoi(entry->d_name);
+            int pid = (int)strtol(entry->d_name, NULL, 10);
             if (pid <= 0) continue;
             if (n >= cap) {
                 cap = n + 64;
