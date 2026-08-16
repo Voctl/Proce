@@ -277,12 +277,9 @@ int main(void) {
         attrset(COLOR_PAIR(CP_GREEN) | A_BOLD);
         mvprintw(0, 0, "\u250c ProcLens ");
         int hdr_len = 12;
-        hdr_len += snprintf(NULL, 0, "Procs: %d", display_n);
-        mvprintw(0, 12, "Procs: %d", display_n);
-        mvprintw(0, hdr_len, "Total: %s", mem_fmt);
-        hdr_len += snprintf(NULL, 0, "Total: %s", mem_fmt);
-        mvprintw(0, hdr_len, " Sort: %s", sort_labels[ui.sort_mode]);
-        hdr_len += snprintf(NULL, 0, " Sort: %s", sort_labels[ui.sort_mode]);
+        hdr_len += mvprintw(0, hdr_len, "Procs: %d", display_n);
+        hdr_len += mvprintw(0, hdr_len, " Total: %s", mem_fmt);
+        hdr_len += mvprintw(0, hdr_len, " Sort: %s", sort_labels[ui.sort_mode]);
         mvprintw(0, hdr_len, " %.1fs", intervals[ui.interval_idx]);
         attrset(COLOR_PAIR(CP_YELLOW));
         mvprintw(0, maxx - 11, "[q] quit");
