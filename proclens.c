@@ -53,7 +53,7 @@ enum {
 static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
 static int parse_proc(int pid, unsigned long *rss, char *name) {
-    char path[64], line[256];
+    char path[32], line[128];
     snprintf(path, sizeof(path), "/proc/%d/status", pid);
     FILE *fp = fopen(path, "r");
     if (!fp) return -1;
