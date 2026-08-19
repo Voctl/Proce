@@ -222,7 +222,7 @@ int main(void) {
                         ui.filter[--ui.filter_len] = '\0';
                     }
                 } else if (ch >= ASCII_MIN && ch <= ASCII_MAX) {
-                    if (ui.filter_len < (int)sizeof(ui.filter) - 2) {
+                    if (ui.filter_len < (int)sizeof(ui.filter) - 1) {
                         ui.filter[ui.filter_len++] = (char)ch;
                         ui.filter[ui.filter_len] = '\0';
                     }
