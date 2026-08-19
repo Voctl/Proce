@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O2
+CFLAGS = -Wall -Wextra -Wshadow -Wconversion -O2
 LDFLAGS = -lncurses
 
 proclens: proclens.c

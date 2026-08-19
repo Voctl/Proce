@@ -105,9 +105,9 @@ static const char * const sort_labels[] = {"RSS", "PID", "Name"};
 
 static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
     if (kb >= RSS_GIB)
-        snprintf(buf, sz, "%.2f GiB", kb / (double)RSS_GIB);
+        snprintf(buf, sz, "%.2f GiB", (double)kb / (double)RSS_GIB);
     else if (kb >= RSS_MIB)
-        snprintf(buf, sz, "%.1f MiB", kb / (double)RSS_MIB);
+        snprintf(buf, sz, "%.1f MiB", (double)kb / (double)RSS_MIB);
     else
         snprintf(buf, sz, "%lu KiB", kb);
 }
@@ -132,7 +132,7 @@ static void init_ncurses(void) {
         {COLOR_RED, -1}, {COLOR_WHITE, -1}, {COLOR_BLACK, COLOR_CYAN}
     };
     for (int i = 0; i < (int)ARRAY_SIZE(cpairs); i++)
-        init_pair(i + 1, cpairs[i].fg, cpairs[i].bg);
+        init_pair((short)(i + 1), (short)cpairs[i].fg, (short)cpairs[i].bg);
 }
 
 typedef struct {
@@ -153,7 +153,7 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
         if (pid <= 0) continue;
         if (result.count >= *cap) {
             *cap = *cap ? *cap * 2 : 64;
-            Process *tmp = realloc(*procs, *cap * sizeof(Process));
+            Process *tmp = realloc(*procs, (size_t)*cap * sizeof(Process));
             if (unlikely(!tmp)) break;
             *procs = tmp;
         }
@@ -166,7 +166,7 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     }
     closedir(dp);
 
-    qsort(*procs, result.count, sizeof(Process), cmp_funcs[ui->sort_mode]);
+    qsort(*procs, (size_t)result.count, sizeof(Process), cmp_funcs[ui->sort_mode]);
 
     int display_n = 0;
     int filter_active = ui->filter[0] != '\0';
