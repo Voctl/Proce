@@ -181,6 +181,93 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     return result;
 }
 
+static void render_ui(const Process *procs, int display_n, unsigned long total_ram,
+                      const UIState *ui, int maxy, int maxx) {
+    erase();
+
+    char mem_fmt[24];
+    fmt_mem(mem_fmt, sizeof(mem_fmt), total_ram);
+
+    attrset(COLOR_PAIR(CP_GREEN) | A_BOLD);
+    mvprintw(0, 0, "\u250c ProcLens ");
+    int hdr_len = 12;
+    hdr_len += mvprintw(0, hdr_len, "Procs: %d", display_n);
+    hdr_len += mvprintw(0, hdr_len, " Total: %s", mem_fmt);
+    hdr_len += mvprintw(0, hdr_len, " Sort: %s", sort_labels[ui->sort_mode]);
+    mvprintw(0, hdr_len, " %.1fs", intervals[ui->interval_idx]);
+    attrset(COLOR_PAIR(CP_YELLOW));
+    mvprintw(0, maxx - 11, "[q] quit");
+    attrset(A_NORMAL);
+
+    mvhline(1, 0, ACS_HLINE, maxx);
+    mvaddch(1, 0, ACS_LTEE);
+    mvaddch(1, maxx - 1, ACS_RTEE);
+
+    attrset(COLOR_PAIR(CP_CYAN) | A_BOLD);
+    mvprintw(1, 2, "%-7s %11s  %s", "PID", "RSS", "NAME");
+    attrset(A_NORMAL);
+
+    mvhline(2, 0, ACS_HLINE, maxx);
+    mvaddch(2, 0, ACS_LTEE);
+    mvaddch(2, maxx - 1, ACS_RTEE);
+
+    int row = 3;
+    int avail_rows = maxy - 1;
+    for (int i = 0; i < display_n && row < avail_rows; i++) {
+        if (i == ui->selected) {
+            attrset(COLOR_PAIR(CP_HIGHLIGHT));
+        } else if (i % 2 == 0) {
+            attrset(COLOR_PAIR(CP_WHITE));
+        } else {
+            attrset(COLOR_PAIR(CP_YELLOW));
+        }
+
+        if (i != ui->selected && procs[i].rss_kb > RSS_GIB)
+            attrset(COLOR_PAIR(CP_RED) | A_BOLD);
+
+        char mem[24];
+        fmt_mem(mem, sizeof(mem), procs[i].rss_kb);
+        mvprintw(row, 2, "%-7d %11s  %s", procs[i].pid, mem, procs[i].name);
+        row++;
+    }
+
+    attrset(A_NORMAL);
+    mvhline(avail_rows, 0, ACS_HLINE, maxx);
+    mvaddch(avail_rows, 0, ACS_LLCORNER);
+    mvaddch(avail_rows, maxx - 1, ACS_LRCORNER);
+    for (int r = 1; r < avail_rows; r++) {
+        mvaddch(r, 0, ACS_VLINE);
+        mvaddch(r, maxx - 1, ACS_VLINE);
+    }
+    mvaddch(0, 0, ACS_ULCORNER);
+    mvaddch(0, maxx - 1, ACS_URCORNER);
+
+    if (ui->filter_active) {
+        curs_set(1);
+        mvprintw(avail_rows, 0, " Filter: %s", ui->filter);
+        clrtoeol();
+    }
+
+    if (ui->show_help) {
+        static const char * const help_lines[] = {
+            " [?] Toggle help",  " [j/Down] Move down",
+            " [Up]     Move up", " [s]      Cycle sort",
+            " [/]      Filter",  " [+/-]    Change interval",
+            " [k]      Kill process", " [q]      Quit"
+        };
+        int hy = maxy / 2 - 3;
+        int hx = maxx / 2 - 18;
+        attrset(COLOR_PAIR(CP_HIGHLIGHT));
+        for (int r = hy; r < hy + 9 && r < avail_rows; r++)
+            mvhline(r, hx, ' ', 36);
+        for (int i = 0; i < (int)ARRAY_SIZE(help_lines); i++)
+            mvprintw(hy + i, hx, "%s", help_lines[i]);
+        attrset(A_NORMAL);
+    }
+
+    refresh();
+}
+
 int main(void) {
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
@@ -301,89 +388,7 @@ int main(void) {
 
         if (ch == KEY_RESIZE) continue;
 
-        erase();
-
-        char mem_fmt[24];
-        fmt_mem(mem_fmt, sizeof(mem_fmt), total_ram);
-
-        attrset(COLOR_PAIR(CP_GREEN) | A_BOLD);
-        mvprintw(0, 0, "\u250c ProcLens ");
-        int hdr_len = 12;
-        hdr_len += mvprintw(0, hdr_len, "Procs: %d", display_n);
-        hdr_len += mvprintw(0, hdr_len, " Total: %s", mem_fmt);
-        hdr_len += mvprintw(0, hdr_len, " Sort: %s", sort_labels[ui.sort_mode]);
-        mvprintw(0, hdr_len, " %.1fs", intervals[ui.interval_idx]);
-        attrset(COLOR_PAIR(CP_YELLOW));
-        mvprintw(0, maxx - 11, "[q] quit");
-        attrset(A_NORMAL);
-
-        mvhline(1, 0, ACS_HLINE, maxx);
-        mvaddch(1, 0, ACS_LTEE);
-        mvaddch(1, maxx - 1, ACS_RTEE);
-
-        attrset(COLOR_PAIR(CP_CYAN) | A_BOLD);
-        mvprintw(1, 2, "%-7s %11s  %s", "PID", "RSS", "NAME");
-        attrset(A_NORMAL);
-
-        mvhline(2, 0, ACS_HLINE, maxx);
-        mvaddch(2, 0, ACS_LTEE);
-        mvaddch(2, maxx - 1, ACS_RTEE);
-
-        int row = 3;
-        int avail_rows = maxy - 1;
-        for (int i = 0; i < display_n && row < avail_rows; i++) {
-            if (i == ui.selected) {
-                attrset(COLOR_PAIR(CP_HIGHLIGHT));
-            } else if (i % 2 == 0) {
-                attrset(COLOR_PAIR(CP_WHITE));
-            } else {
-                attrset(COLOR_PAIR(CP_YELLOW));
-            }
-
-            if (i != ui.selected && procs[i].rss_kb > RSS_GIB)
-                attrset(COLOR_PAIR(CP_RED) | A_BOLD);
-
-            char mem[24];
-            fmt_mem(mem, sizeof(mem), procs[i].rss_kb);
-            mvprintw(row, 2, "%-7d %11s  %s", procs[i].pid, mem, procs[i].name);
-            row++;
-        }
-
-        attrset(A_NORMAL);
-        mvhline(avail_rows, 0, ACS_HLINE, maxx);
-        mvaddch(avail_rows, 0, ACS_LLCORNER);
-        mvaddch(avail_rows, maxx - 1, ACS_LRCORNER);
-        for (int r = 1; r < avail_rows; r++) {
-            mvaddch(r, 0, ACS_VLINE);
-            mvaddch(r, maxx - 1, ACS_VLINE);
-        }
-        mvaddch(0, 0, ACS_ULCORNER);
-        mvaddch(0, maxx - 1, ACS_URCORNER);
-
-        if (ui.filter_active) {
-            curs_set(1);
-            mvprintw(avail_rows, 0, " Filter: %s", ui.filter);
-            clrtoeol();
-        }
-
-        if (ui.show_help) {
-            static const char * const help_lines[] = {
-                " [?] Toggle help",  " [j/Down] Move down",
-                " [Up]     Move up", " [s]      Cycle sort",
-                " [/]      Filter",  " [+/-]    Change interval",
-                " [k]      Kill process", " [q]      Quit"
-            };
-            int hy = maxy / 2 - 3;
-            int hx = maxx / 2 - 18;
-            attrset(COLOR_PAIR(CP_HIGHLIGHT));
-            for (int r = hy; r < hy + 9 && r < avail_rows; r++)
-                mvhline(r, hx, ' ', 36);
-            for (int i = 0; i < (int)ARRAY_SIZE(help_lines); i++)
-                mvprintw(hy + i, hx, "%s", help_lines[i]);
-            attrset(A_NORMAL);
-        }
-
-        refresh();
+        render_ui(procs, display_n, total_ram, &ui, maxy, maxx);
     }
 
     free(procs);
