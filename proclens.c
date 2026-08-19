@@ -135,6 +135,52 @@ static void init_ncurses(void) {
         init_pair(i + 1, cpairs[i].fg, cpairs[i].bg);
 }
 
+typedef struct {
+    int count;
+    unsigned long total_ram;
+} ScanResult;
+
+static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
+    ScanResult result = {0, 0};
+    DIR *dp = opendir("/proc");
+    if (unlikely(!dp)) return result;
+
+    struct dirent *entry;
+    while ((entry = readdir(dp))) {
+        const char *d = entry->d_name;
+        if (d[0] < '1' || d[0] > '9') continue;
+        int pid = (int)strtol(d, NULL, 10);
+        if (pid <= 0) continue;
+        if (result.count >= *cap) {
+            *cap = *cap ? *cap * 2 : 64;
+            Process *tmp = realloc(*procs, *cap * sizeof(Process));
+            if (unlikely(!tmp)) break;
+            *procs = tmp;
+        }
+        if (parse_proc(pid, &(*procs)[result.count].rss_kb, (*procs)[result.count].name) == 0) {
+            (*procs)[result.count].pid = pid;
+            result.total_ram += (*procs)[result.count].rss_kb;
+            result.count++;
+        }
+    }
+    closedir(dp);
+
+    qsort(*procs, result.count, sizeof(Process), cmp_funcs[ui->sort_mode]);
+
+    int display_n = 0;
+    int filter_active = ui->filter[0] != '\0';
+    for (int i = 0; i < result.count; i++) {
+        if ((*procs)[i].rss_kb == 0) continue;
+        if (filter_active && !strstr((*procs)[i].name, ui->filter)) continue;
+        if (i != display_n)
+            (*procs)[display_n] = (*procs)[i];
+        display_n++;
+    }
+    result.count = display_n;
+
+    return result;
+}
+
 int main(void) {
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
@@ -165,42 +211,9 @@ int main(void) {
             continue;
         }
 
-        DIR *dp = opendir("/proc");
-        if (unlikely(!dp)) break;
-
-        struct dirent *entry;
-        int n = 0;
-        unsigned long total_ram = 0;
-        while ((entry = readdir(dp))) {
-            const char *d = entry->d_name;
-            if (d[0] < '1' || d[0] > '9') continue;
-            int pid = (int)strtol(d, NULL, 10);
-            if (pid <= 0) continue;
-            if (n >= cap) {
-                cap = cap ? cap * 2 : 64;
-                Process *tmp = realloc(procs, cap * sizeof(Process));
-                if (unlikely(!tmp)) break;
-                procs = tmp;
-            }
-            if (parse_proc(pid, &procs[n].rss_kb, procs[n].name) == 0) {
-                procs[n].pid = pid;
-                total_ram += procs[n].rss_kb;
-                n++;
-            }
-        }
-        closedir(dp);
-
-        qsort(procs, n, sizeof(Process), cmp_funcs[ui.sort_mode]);
-
-        int display_n = 0;
-        int filter_active = ui.filter[0] != '\0';
-        for (int i = 0; i < n; i++) {
-            if (procs[i].rss_kb == 0) continue;
-            if (filter_active && !strstr(procs[i].name, ui.filter)) continue;
-            if (i != display_n)
-                procs[display_n] = procs[i];
-            display_n++;
-        }
+        ScanResult scan = scan_processes(&procs, &cap, &ui);
+        int display_n = scan.count;
+        unsigned long total_ram = scan.total_ram;
 
         if (ui.selected >= display_n) ui.selected = display_n ? display_n - 1 : 0;
         if (ui.selected < 0) ui.selected = 0;
