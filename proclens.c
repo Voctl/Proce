@@ -112,10 +112,7 @@ static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
         snprintf(buf, sz, "%lu KiB", kb);
 }
 
-int main(void) {
-    signal(SIGINT, handle_signal);
-    signal(SIGTERM, handle_signal);
-
+static void init_ncurses(void) {
     initscr();
     cbreak();
     noecho();
@@ -126,7 +123,7 @@ int main(void) {
     if (!has_colors()) {
         endwin();
         fprintf(stderr, "Terminal does not support colors\n");
-        return 1;
+        exit(1);
     }
     start_color();
     use_default_colors();
@@ -136,6 +133,13 @@ int main(void) {
     };
     for (int i = 0; i < (int)ARRAY_SIZE(cpairs); i++)
         init_pair(i + 1, cpairs[i].fg, cpairs[i].bg);
+}
+
+int main(void) {
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+
+    init_ncurses();
 
     Process *procs = NULL;
     int cap = 0;
@@ -150,7 +154,7 @@ int main(void) {
         .show_help = 0
     };
 
-    while (1) {
+    while (running) {
         int maxy, maxx;
         getmaxyx(stdscr, maxy, maxx);
         if (unlikely(maxx < MIN_COLS || maxy < MIN_ROWS)) {
@@ -204,7 +208,7 @@ int main(void) {
         timeout((int)(intervals[ui.interval_idx] * 1000));
 
         int ch = 0;
-    while (running) {
+    while (1) {
             ch = getch();
             if (likely(ch == ERR)) break;
 
