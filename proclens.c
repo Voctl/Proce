@@ -62,7 +62,7 @@ static void handle_signal(int sig) {
 static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
 static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name) {
-    char path[32], line[128];
+    char path[24], line[96];
     snprintf(path, sizeof(path), "/proc/%d/status", pid);
     FILE *fp = fopen(path, "r");
     if (unlikely(!fp)) return -1;
