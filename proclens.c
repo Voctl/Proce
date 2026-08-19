@@ -335,12 +335,13 @@ static void render_ui(const Process *procs, int display_n, unsigned long total_r
             " [/]      Filter",  " [+/-]    Change interval",
             " [k]      Kill process", " [q]      Quit"
         };
-        int hy = maxy / 2 - 3;
+        enum { HELP_COUNT = 8 };
+        int hy = maxy / 2 - HELP_COUNT / 2;
         int hx = maxx / 2 - 18;
         attrset(COLOR_PAIR(CP_HIGHLIGHT));
-        for (int r = hy; r < hy + 9 && r < avail_rows; r++)
+        for (int r = hy; r < hy + HELP_COUNT + 1 && r < avail_rows; r++)
             mvhline(r, hx, ' ', 36);
-        for (int i = 0; i < (int)ARRAY_SIZE(help_lines); i++)
+        for (int i = 0; i < HELP_COUNT; i++)
             mvprintw(hy + i, hx, "%s", help_lines[i]);
         attrset(A_NORMAL);
     }
