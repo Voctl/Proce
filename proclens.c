@@ -158,6 +158,7 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
             *procs = tmp;
         }
         if (parse_proc(pid, &(*procs)[result.count].rss_kb, (*procs)[result.count].name) == 0) {
+            if ((*procs)[result.count].rss_kb == 0) continue;
             (*procs)[result.count].pid = pid;
             result.total_ram += (*procs)[result.count].rss_kb;
             result.count++;
@@ -170,7 +171,6 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     int display_n = 0;
     int filter_active = ui->filter[0] != '\0';
     for (int i = 0; i < result.count; i++) {
-        if ((*procs)[i].rss_kb == 0) continue;
         if (filter_active && !strstr((*procs)[i].name, ui->filter)) continue;
         if (i != display_n)
             (*procs)[display_n] = (*procs)[i];
