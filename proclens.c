@@ -16,8 +16,8 @@ typedef struct {
 } Process;
 
 typedef struct {
-    int sort_mode;
     char filter[FILTER_MAX];
+    int sort_mode;
     int filter_len;
     int filter_active;
     int selected;
@@ -359,8 +359,8 @@ int main(void) {
     int cap = 0;
 
     UIState ui = {
-        .sort_mode = SORT_RSS,
         .filter = "",
+        .sort_mode = SORT_RSS,
         .filter_len = 0,
         .filter_active = 0,
         .selected = 0,
