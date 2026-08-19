@@ -181,6 +181,86 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     return result;
 }
 
+enum { INPUT_NONE, INPUT_BREAK, INPUT_CONTINUE, INPUT_QUIT };
+
+static int handle_input(UIState *ui, const Process *procs, int display_n, int maxy) {
+    int ch = 0;
+    while (1) {
+        ch = getch();
+        if (likely(ch == ERR)) return INPUT_CONTINUE;
+
+        if (ui->filter_active) {
+            if (ch == KEY_ESC) {
+                ui->filter_active = 0;
+                ui->filter[0] = '\0';
+                ui->filter_len = 0;
+            } else if (ch == '\n' || ch == KEY_ENTER) {
+                ui->filter_active = 0;
+            } else if (ch == KEY_BACKSPACE || ch == KEY_BS1 || ch == KEY_BS2) {
+                if (ui->filter_len > 0) {
+                    ui->filter[--ui->filter_len] = '\0';
+                }
+            } else if (ch >= ASCII_MIN && ch <= ASCII_MAX) {
+                if (ui->filter_len < (int)sizeof(ui->filter) - 1) {
+                    ui->filter[ui->filter_len++] = (char)ch;
+                    ui->filter[ui->filter_len] = '\0';
+                }
+            }
+            return INPUT_BREAK;
+        }
+
+        if (ch == 'q')
+            return INPUT_QUIT;
+        if (ch == KEY_UP) {
+            if (ui->selected > 0) ui->selected--;
+            return INPUT_BREAK;
+        }
+        if (ch == KEY_DOWN || ch == 'j') {
+            if (ui->selected < display_n - 1) ui->selected++;
+            return INPUT_BREAK;
+        }
+        if (ch == 's') {
+            ui->sort_mode = (ui->sort_mode + 1) % SORT_COUNT;
+            return INPUT_BREAK;
+        }
+        if (ch == '/') {
+            ui->filter_active = 1;
+            ui->filter[0] = '\0';
+            ui->filter_len = 0;
+            curs_set(1);
+            return INPUT_BREAK;
+        }
+        if (ch == 'k' && display_n > 0) {
+            int target = procs[ui->selected].pid;
+            curs_set(1);
+            mvprintw(maxy - 1, 0, " Kill PID %d? (y/N): ", target);
+            clrtoeol();
+            refresh();
+            int ans = getch();
+            curs_set(0);
+            if (ans == 'y' || ans == 'Y')
+                kill(target, SIGTERM);
+            return INPUT_BREAK;
+        }
+        if (ch == '+' || ch == '=') {
+            if (ui->interval_idx < (int)ARRAY_SIZE(intervals) - 1) ui->interval_idx++;
+            return INPUT_BREAK;
+        }
+        if (ch == '-') {
+            if (ui->interval_idx > 0) ui->interval_idx--;
+            return INPUT_BREAK;
+        }
+        if (ch == KEY_RESIZE) {
+            if (ui->filter_active) curs_set(0);
+            return INPUT_BREAK;
+        }
+        if (ch == '?') {
+            ui->show_help = !ui->show_help;
+            return INPUT_BREAK;
+        }
+    }
+}
+
 static void render_ui(const Process *procs, int display_n, unsigned long total_ram,
                       const UIState *ui, int maxy, int maxx) {
     erase();
@@ -307,86 +387,15 @@ int main(void) {
 
         timeout((int)(intervals[ui.interval_idx] * 1000));
 
-        int ch = 0;
-    while (1) {
-            ch = getch();
-            if (likely(ch == ERR)) break;
+        int action = handle_input(&ui, procs, display_n, maxy);
 
-            if (ui.filter_active) {
-                if (ch == KEY_ESC) {
-                    ui.filter_active = 0;
-                    ui.filter[0] = '\0';
-                    ui.filter_len = 0;
-                } else if (ch == '\n' || ch == KEY_ENTER) {
-                    ui.filter_active = 0;
-                } else if (ch == KEY_BACKSPACE || ch == KEY_BS1 || ch == KEY_BS2) {
-                    if (ui.filter_len > 0) {
-                        ui.filter[--ui.filter_len] = '\0';
-                    }
-                } else if (ch >= ASCII_MIN && ch <= ASCII_MAX) {
-                    if (ui.filter_len < (int)sizeof(ui.filter) - 1) {
-                        ui.filter[ui.filter_len++] = (char)ch;
-                        ui.filter[ui.filter_len] = '\0';
-                    }
-                }
-                break;
-            }
-
-            if (ch == 'q') {
-                free(procs);
-                endwin();
-                return 0;
-            }
-            if (ch == KEY_UP) {
-                if (ui.selected > 0) ui.selected--;
-                break;
-            }
-            if (ch == KEY_DOWN || ch == 'j') {
-                if (ui.selected < display_n - 1) ui.selected++;
-                break;
-            }
-            if (ch == 's') {
-                ui.sort_mode = (ui.sort_mode + 1) % SORT_COUNT;
-                break;
-            }
-            if (ch == '/') {
-                ui.filter_active = 1;
-                ui.filter[0] = '\0';
-                ui.filter_len = 0;
-                curs_set(1);
-                break;
-            }
-            if (ch == 'k' && display_n > 0) {
-                int target = procs[ui.selected].pid;
-                curs_set(1);
-                mvprintw(maxy - 1, 0, " Kill PID %d? (y/N): ", target);
-                clrtoeol();
-                refresh();
-                int ans = getch();
-                curs_set(0);
-                if (ans == 'y' || ans == 'Y')
-                    kill(target, SIGTERM);
-                break;
-            }
-            if (ch == '+' || ch == '=') {
-                if (ui.interval_idx < (int)ARRAY_SIZE(intervals) - 1) ui.interval_idx++;
-                break;
-            }
-            if (ch == '-') {
-                if (ui.interval_idx > 0) ui.interval_idx--;
-                break;
-            }
-            if (ch == KEY_RESIZE) {
-                if (ui.filter_active) curs_set(0);
-                break;
-            }
-            if (ch == '?') {
-                ui.show_help = !ui.show_help;
-                break;
-            }
+        if (action == INPUT_QUIT) break;
+        if (action == INPUT_BREAK && ui.filter_active == 0) {
+            /* check if it was a resize */
+            continue;
         }
 
-        if (ch == KEY_RESIZE) continue;
+        if (action == INPUT_BREAK) continue;
 
         render_ui(procs, display_n, total_ram, &ui, maxy, maxx);
     }
