@@ -85,7 +85,7 @@ static int parse_proc(int pid, unsigned long *rss, char *name) {
 static int cmp_rss_desc(const void *a, const void *b) {
     unsigned long ra = ((const Process *)a)->rss_kb;
     unsigned long rb = ((const Process *)b)->rss_kb;
-    return rb > ra ? -1 : rb < ra;
+    return (rb > ra) - (rb < ra);
 }
 
 static int cmp_pid_asc(const void *a, const void *b) {
