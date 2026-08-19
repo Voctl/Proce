@@ -8,7 +8,7 @@ proclens: proclens.c
 clean:
 	rm -f proclens
 
-run :
+run: proclens
 	./proclens
 
-.PHONY: clean
+.PHONY: clean run
