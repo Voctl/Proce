@@ -8,6 +8,7 @@
 
 #define NAME_MAX_LEN 15
 #define FILTER_MAX 64
+#define VERSION "1.0.0"
 
 typedef struct {
     int pid;
@@ -269,8 +270,8 @@ static void render_ui(const Process *procs, int display_n, unsigned long total_r
     fmt_mem(mem_fmt, sizeof(mem_fmt), total_ram);
 
     attrset(COLOR_PAIR(CP_GREEN) | A_BOLD);
-    mvprintw(0, 0, "\u250c ProcLens ");
-    int hdr_len = 12;
+    mvprintw(0, 0, "\u250c ProcLens v%s ", VERSION);
+    int hdr_len = 18;
     hdr_len += mvprintw(0, hdr_len, "Procs: %d", display_n);
     hdr_len += mvprintw(0, hdr_len, " Total: %s", mem_fmt);
     hdr_len += mvprintw(0, hdr_len, " Sort: %s", sort_labels[ui->sort_mode]);
