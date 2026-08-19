@@ -52,6 +52,13 @@ enum {
     CP_HIGHLIGHT
 };
 
+static volatile sig_atomic_t running = 1;
+
+static void handle_signal(int sig) {
+    (void)sig;
+    running = 0;
+}
+
 static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
 static int parse_proc(int pid, unsigned long *rss, char *name) {
@@ -108,6 +115,9 @@ static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
 }
 
 int main(void) {
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+
     initscr();
     cbreak();
     noecho();
@@ -196,7 +206,7 @@ int main(void) {
         timeout((int)(intervals[ui.interval_idx] * 1000));
 
         int ch = 0;
-        while (1) {
+    while (running) {
             ch = getch();
             if (likely(ch == ERR)) break;
 
