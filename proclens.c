@@ -113,19 +113,21 @@ static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name)
 }
 
 static int cmp_rss_desc(const void *a, const void *b) {
-    unsigned long ra = ((const Process *)a)->rss_kb;
-    unsigned long rb = ((const Process *)b)->rss_kb;
+    unsigned long ra = (*(const Process *const *)a)->rss_kb;
+    unsigned long rb = (*(const Process *const *)b)->rss_kb;
     return (rb > ra) - (rb < ra);
 }
 
 static int cmp_pid_asc(const void *a, const void *b) {
-    int pa = ((const Process *)a)->pid;
-    int pb = ((const Process *)b)->pid;
+    int pa = (*(const Process *const *)a)->pid;
+    int pb = (*(const Process *const *)b)->pid;
     return (pa > pb) - (pa < pb);
 }
 
 static int cmp_name_asc(const void *a, const void *b) {
-    return strcmp(((const Process *)a)->name, ((const Process *)b)->name);
+    const Process *pa = *(const Process *const *)a;
+    const Process *pb = *(const Process *const *)b;
+    return strcmp(pa->name, pb->name);
 }
 
 static int (* const cmp_funcs[])(const void *, const void *) = {
@@ -170,7 +172,8 @@ typedef struct {
     unsigned long total_ram;
 } ScanResult;
 
-static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
+static ScanResult scan_processes(Process **procs, const Process ***view,
+                                 int *cap, int *vcap, const UIState *ui) {
     ScanResult result = {0, 0};
     DIR *dp = opendir("/proc");
     if (unlikely(!dp)) return result;
@@ -198,14 +201,28 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     closedir(dp);
     *procs = arr;
 
-    qsort(*procs, (size_t)result.count, sizeof(Process), cmp_funcs[ui->sort_mode]);
+    if (result.count > *vcap) {
+        const Process **tmpv = realloc(*view, (size_t)*cap * sizeof(*tmpv));
+        if (unlikely(!tmpv)) {
+            result.count = 0;
+            return result;
+        }
+        *view = tmpv;
+        *vcap = *cap;
+    }
+
+    const Process **vp = *view;
+    for (int i = 0; i < result.count; i++)
+        vp[i] = &arr[i];
+
+    qsort(vp, (size_t)result.count, sizeof(*vp), cmp_funcs[ui->sort_mode]);
 
     int display_n = 0;
     int filter_active = ui->filter[0] != '\0';
     for (int i = 0; i < result.count; i++) {
-        if (filter_active && !strstr((*procs)[i].name, ui->filter)) continue;
+        if (filter_active && !strstr(vp[i]->name, ui->filter)) continue;
         if (display_n != i)
-            (*procs)[display_n] = (*procs)[i];
+            vp[display_n] = vp[i];
         display_n++;
     }
     result.count = display_n;
@@ -215,7 +232,7 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
 
 enum { INPUT_NONE, INPUT_BREAK, INPUT_CONTINUE, INPUT_QUIT, INPUT_REDRAW };
 
-static int handle_input(UIState *ui, const Process *procs, int display_n, int maxy) {
+static int handle_input(UIState *ui, const Process **procs, int display_n, int maxy) {
     int ch = 0;
     while (1) {
         ch = getch();
@@ -262,7 +279,7 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
             return INPUT_REDRAW;
         case 'k':
             if (display_n > 0) {
-                int target = procs[ui->selected].pid;
+                int target = procs[ui->selected]->pid;
                 curs_set(1);
                 mvprintw(maxy - 1, 0, " Kill PID %d? (y/N): ", target);
                 clrtoeol();
@@ -291,7 +308,7 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
     }
 }
 
-static void render_ui(const Process *procs, int display_n, unsigned long total_ram,
+static void render_ui(const Process **procs, int display_n, unsigned long total_ram,
                       const UIState *ui, int maxy, int maxx) {
     erase();
 
@@ -327,7 +344,7 @@ static void render_ui(const Process *procs, int display_n, unsigned long total_r
     int avail_rows = maxy - 1;
     char mem[24];
     for (int i = 0; i < display_n && row < avail_rows; i++) {
-        const Process *p = &procs[i];
+        const Process *p = procs[i];
         int attr;
         if (i == ui->selected)
             attr = COLOR_PAIR(CP_HIGHLIGHT);
@@ -396,7 +413,8 @@ int main(void) {
     init_ncurses();
 
     Process *procs = NULL;
-    int cap = 0;
+    const Process **view = NULL;
+    int cap = 0, vcap = 0;
 
     UIState ui = {
         .sort_mode = SORT_RSS,
@@ -414,7 +432,7 @@ int main(void) {
             continue;
         }
 
-        ScanResult scan = scan_processes(&procs, &cap, &ui);
+        ScanResult scan = scan_processes(&procs, &view, &cap, &vcap, &ui);
         int display_n = scan.count;
         unsigned long total_ram = scan.total_ram;
 
@@ -427,19 +445,20 @@ int main(void) {
             timeout((int)(intervals[ui.interval_idx] * 1000));
         }
 
-        int action = handle_input(&ui, procs, display_n, maxy);
+        int action = handle_input(&ui, view, display_n, maxy);
 
         if (action == INPUT_QUIT) break;
         if (action == INPUT_REDRAW) {
-            render_ui(procs, display_n, total_ram, &ui, maxy, maxx);
+            render_ui(view, display_n, total_ram, &ui, maxy, maxx);
             continue;
         }
         if (action == INPUT_BREAK) continue;
 
-        render_ui(procs, display_n, total_ram, &ui, maxy, maxx);
+        render_ui(view, display_n, total_ram, &ui, maxy, maxx);
     }
 
     free(procs);
+    free(view);
     endwin();
     return 0;
 }
