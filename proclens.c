@@ -218,7 +218,7 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     return result;
 }
 
-enum { INPUT_NONE, INPUT_BREAK, INPUT_CONTINUE, INPUT_QUIT };
+enum { INPUT_NONE, INPUT_BREAK, INPUT_CONTINUE, INPUT_QUIT, INPUT_REDRAW };
 
 static int handle_input(UIState *ui, const Process *procs, int display_n, int maxy) {
     int ch = 0;
@@ -243,7 +243,7 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
                     ui->filter[ui->filter_len] = '\0';
                 }
             }
-            return INPUT_BREAK;
+            return INPUT_REDRAW;
         }
 
         switch (ch) {
@@ -251,11 +251,11 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
             return INPUT_QUIT;
         case KEY_UP:
             if (ui->selected > 0) ui->selected--;
-            return INPUT_BREAK;
+            return INPUT_REDRAW;
         case KEY_DOWN:
         case 'j':
             if (ui->selected < display_n - 1) ui->selected++;
-            return INPUT_BREAK;
+            return INPUT_REDRAW;
         case 's':
             ui->sort_mode = (ui->sort_mode + 1) % SORT_COUNT;
             return INPUT_BREAK;
@@ -264,7 +264,7 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
             ui->filter[0] = '\0';
             ui->filter_len = 0;
             curs_set(1);
-            return INPUT_BREAK;
+            return INPUT_REDRAW;
         case 'k':
             if (display_n > 0) {
                 int target = procs[ui->selected].pid;
@@ -282,16 +282,16 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
         case '=':
             if (ui->interval_idx < (int)ARRAY_SIZE(intervals) - 1)
                 ui->interval_idx++;
-            return INPUT_BREAK;
+            return INPUT_REDRAW;
         case '-':
             if (ui->interval_idx > 0) ui->interval_idx--;
-            return INPUT_BREAK;
+            return INPUT_REDRAW;
         case KEY_RESIZE:
             if (ui->filter_active) curs_set(0);
             return INPUT_BREAK;
         case '?':
             ui->show_help = !ui->show_help;
-            return INPUT_BREAK;
+            return INPUT_REDRAW;
         }
     }
 }
@@ -432,6 +432,10 @@ int main(void) {
         int action = handle_input(&ui, procs, display_n, maxy);
 
         if (action == INPUT_QUIT) break;
+        if (action == INPUT_REDRAW) {
+            render_ui(procs, display_n, total_ram, &ui, maxy, maxx);
+            continue;
+        }
         if (action == INPUT_BREAK) continue;
 
         render_ui(procs, display_n, total_ram, &ui, maxy, maxx);
