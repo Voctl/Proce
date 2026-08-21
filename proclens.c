@@ -232,6 +232,17 @@ static ScanResult scan_processes(Process **procs, const Process ***view,
 
 enum { INPUT_NONE, INPUT_BREAK, INPUT_CONTINUE, INPUT_QUIT, INPUT_REDRAW };
 
+typedef struct {
+    char txt[96];
+    int attr;
+    unsigned char used;
+} RowCache;
+
+#define ROW_CACHE_MAX 256
+static RowCache row_cache[ROW_CACHE_MAX];
+static int cache_cols = -1, cache_rows = -1;
+static int cache_help = -1, cache_filter = -1;
+
 static int handle_input(UIState *ui, const Process **procs, int display_n, int maxy) {
     int ch = 0;
     while (1) {
@@ -310,7 +321,15 @@ static int handle_input(UIState *ui, const Process **procs, int display_n, int m
 
 static void render_ui(const Process **procs, int display_n, unsigned long total_ram,
                       const UIState *ui, int maxy, int maxx) {
-    erase();
+    if (maxx != cache_cols || maxy != cache_rows ||
+        ui->show_help != cache_help ||
+        (ui->filter_active != 0) != (cache_filter != 0)) {
+        memset(row_cache, 0, sizeof(row_cache));
+        cache_cols = maxx;
+        cache_rows = maxy;
+        cache_help = ui->show_help;
+        cache_filter = ui->filter_active;
+    }
 
     char mem_fmt[24];
     fmt_mem(mem_fmt, sizeof(mem_fmt), total_ram);
@@ -342,6 +361,8 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
 
     int row = 3;
     int avail_rows = maxy - 1;
+    if (avail_rows > ROW_CACHE_MAX + 3)
+        avail_rows = ROW_CACHE_MAX + 3;
     char mem[24];
     for (int i = 0; i < display_n && row < avail_rows; i++) {
         const Process *p = procs[i];
@@ -353,11 +374,31 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
         else
             attr = (i % 2 == 0) ? COLOR_PAIR(CP_WHITE)
                                 : COLOR_PAIR(CP_YELLOW);
-        attrset(attr);
 
         fmt_mem(mem, sizeof(mem), p->rss_kb);
-        mvprintw(row, 2, "%-7d %11s  %s", p->pid, mem, p->name);
+        char line[96];
+        snprintf(line, sizeof(line), "%-7d %11s  %s", p->pid, mem, p->name);
+
+        RowCache *c = &row_cache[row];
+        if (!c->used || c->attr != attr || strcmp(c->txt, line) != 0) {
+            attrset(attr);
+            mvprintw(row, 2, "%s", line);
+            clrtoeol();
+            attrset(A_NORMAL);
+            memcpy(c->txt, line, sizeof(c->txt));
+            c->attr = attr;
+            c->used = 1;
+        }
         row++;
+    }
+
+    for (; row < avail_rows; row++) {
+        RowCache *c = &row_cache[row];
+        if (c->used) {
+            move(row, 2);
+            clrtoeol();
+            c->used = 0;
+        }
     }
 
     attrset(A_NORMAL);
