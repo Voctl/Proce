@@ -374,7 +374,9 @@ static void render_ui(const Process *procs, int display_n, unsigned long total_r
         };
         enum { HELP_COUNT = 8 };
         int hy = maxy / 2 - HELP_COUNT / 2;
+        if (hy < 1) hy = 1;
         int hx = maxx / 2 - 18;
+        if (hx < 2) hx = 2;
         attrset(COLOR_PAIR(CP_HIGHLIGHT));
         for (int r = hy; r < hy + HELP_COUNT + 1 && r < avail_rows; r++)
             mvhline(r, hx, ' ', 36);
