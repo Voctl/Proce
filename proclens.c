@@ -77,7 +77,6 @@ static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name)
     *rss = 0;
     name[0] = '\0';
     int found = 0;
-    unsigned long tmp;
     while (fgets(line, sizeof(line), fp) && found < 2) {
         const char *v = match_key(line, "Name:");
         if (v != NULL) {
@@ -91,9 +90,16 @@ static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name)
                 name[n] = '\0';
                 found++;
             }
-        } else if (sscanf(line, "VmRSS: %lu", &tmp) == 1) {
-            *rss = tmp;
-            found++;
+        } else {
+            const char *vs = match_key(line, "VmRSS:");
+            if (vs != NULL) {
+                char *end;
+                unsigned long kb = strtoul(vs, &end, 10);
+                if (end != vs) {
+                    *rss = kb;
+                    found++;
+                }
+            }
         }
     }
     fclose(fp);
