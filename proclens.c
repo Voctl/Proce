@@ -62,6 +62,13 @@ static void handle_signal(int sig) {
 
 static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
+static const char *match_key(const char *line, const char *key) {
+    while (*key != '\0') {
+        if (*line++ != *key++) return NULL;
+    }
+    return line;
+}
+
 static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name) {
     char path[24], line[96];
     snprintf(path, sizeof(path), "/proc/%d/status", pid);
