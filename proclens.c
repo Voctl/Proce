@@ -399,13 +399,8 @@ int main(void) {
     int cap = 0;
 
     UIState ui = {
-        .filter = "",
         .sort_mode = SORT_RSS,
-        .filter_len = 0,
-        .filter_active = 0,
-        .selected = 0,
-        .interval_idx = 1,
-        .show_help = 0
+        .interval_idx = 1
     };
 
     while (running) {
