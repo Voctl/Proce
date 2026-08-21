@@ -354,9 +354,9 @@ static void render_ui(const Process *procs, int display_n, unsigned long total_r
     mvhline(avail_rows, 0, ACS_HLINE, maxx);
     mvaddch(avail_rows, 0, ACS_LLCORNER);
     mvaddch(avail_rows, maxx - 1, ACS_LRCORNER);
-    for (int r = 1; r < avail_rows; r++) {
-        mvaddch(r, 0, ACS_VLINE);
-        mvaddch(r, maxx - 1, ACS_VLINE);
+    if (avail_rows > 1) {
+        mvvline(1, 0, ACS_VLINE, avail_rows - 1);
+        mvvline(1, maxx - 1, ACS_VLINE, avail_rows - 1);
     }
     mvaddch(0, 0, ACS_ULCORNER);
     mvaddch(0, maxx - 1, ACS_URCORNER);
