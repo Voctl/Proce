@@ -391,6 +391,29 @@ static int handle_input(UIState *ui, const Process **procs, int display_n, int m
         case 'j':
             if (ui->selected < display_n - 1) ui->selected++;
             return INPUT_REDRAW;
+        case KEY_NPAGE: {
+            int page = maxy - 6;
+            if (page < 1) page = 1;
+            ui->selected += page;
+            if (ui->selected > display_n - 1)
+                ui->selected = display_n ? display_n - 1 : 0;
+            return INPUT_REDRAW;
+        }
+        case KEY_PPAGE: {
+            int page = maxy - 6;
+            if (page < 1) page = 1;
+            ui->selected -= page;
+            if (ui->selected < 0) ui->selected = 0;
+            return INPUT_REDRAW;
+        }
+        case 'g':
+        case KEY_HOME:
+            ui->selected = 0;
+            return INPUT_REDRAW;
+        case 'G':
+        case KEY_END:
+            ui->selected = display_n ? display_n - 1 : 0;
+            return INPUT_REDRAW;
         case 's':
             ui->sort_mode = (ui->sort_mode + 1) % SORT_COUNT;
             return INPUT_BREAK;
@@ -538,11 +561,12 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
     if (ui->show_help) {
         static const char * const help_lines[] = {
             " [?] Toggle help",  " [j/Down] Move down",
-            " [Up]     Move up", " [s]      Cycle sort",
-            " [/]      Filter",  " [+/-]    Change interval",
+            " [Up]     Move up", " [PgUp/Dn] Page",
+            " [g/G]   Top/End",  " [s]      Cycle sort",
+            " [/]      Filter",  " [+/-]    Interval",
             " [k]      Kill process", " [q]      Quit"
         };
-        enum { HELP_COUNT = 8 };
+        enum { HELP_COUNT = 10 };
         int hy = maxy / 2 - HELP_COUNT / 2;
         if (hy < 1) hy = 1;
         int hx = maxx / 2 - 18;
