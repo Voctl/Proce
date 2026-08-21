@@ -67,6 +67,22 @@ static void handle_signal(int sig) {
 static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
 static unsigned long kb_per_page = 4;
+static long hz = 100;
+
+typedef struct {
+    int pid;
+    unsigned long ticks;
+} TickSample;
+
+static TickSample *prev_samples;
+static int prev_count, prev_cap;
+static double last_scan_time;
+
+static int cmp_sample_pid(const void *a, const void *b) {
+    int pa = ((const TickSample *)a)->pid;
+    int pb = ((const TickSample *)b)->pid;
+    return (pa > pb) - (pa < pb);
+}
 
 /* /proc/<pid>/stat: "pid (comm) state ... rss" — status-dan ~4x kicik fayl */
 /* /proc/<pid>/stat: "pid (comm) state ... utime stime ... rss" */
@@ -208,6 +224,51 @@ static ScanResult scan_processes(Process **procs, const Process ***view,
     }
     closedir(dp);
     *procs = arr;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    double now = (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
+    double dt = (last_scan_time > 0.0) ? now - last_scan_time : 0.0;
+
+    for (int i = 0; i < result.count; i++) {
+        Process *p = &arr[i];
+        double pct = 0.0;
+        if (dt > 0.0) {
+            int lo = 0, hi = prev_count - 1;
+            while (lo <= hi) {
+                int mid = lo + ((hi - lo) >> 1);
+                if (prev_samples[mid].pid < p->pid) lo = mid + 1;
+                else if (prev_samples[mid].pid > p->pid) hi = mid - 1;
+                else {
+                    unsigned long d = p->cpu_ticks - prev_samples[mid].ticks;
+                    pct = (double)d / (dt * (double)hz) * 100.0;
+                    break;
+                }
+            }
+        }
+        if (pct < 0.0) pct = 0.0;
+        if (pct > 999.9) pct = 999.9;
+        p->cpu_pct = (float)pct;
+    }
+
+    if (result.count > prev_cap) {
+        TickSample *tmps = realloc(prev_samples, (size_t)result.count * sizeof(*tmps));
+        if (tmps != NULL) {
+            prev_samples = tmps;
+            prev_cap = result.count;
+        }
+    }
+    if (prev_samples != NULL && result.count <= prev_cap) {
+        for (int i = 0; i < result.count; i++) {
+            prev_samples[i].pid = arr[i].pid;
+            prev_samples[i].ticks = arr[i].cpu_ticks;
+        }
+        prev_count = result.count;
+        qsort(prev_samples, (size_t)prev_count, sizeof(*prev_samples), cmp_sample_pid);
+    } else {
+        prev_count = 0;
+    }
+    last_scan_time = now;
 
     if (result.count > *vcap) {
         const Process **tmpv = realloc(*view, (size_t)*cap * sizeof(*tmpv));
@@ -469,6 +530,8 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
 int main(void) {
     long ps = sysconf(_SC_PAGESIZE);
     if (ps > 0) kb_per_page = (unsigned long)ps / 1024ul;
+    long clk = sysconf(_SC_CLK_TCK);
+    if (clk > 0) hz = clk;
 
     struct sigaction sa = { .sa_handler = handle_signal };
     sigemptyset(&sa.sa_mask);
