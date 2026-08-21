@@ -351,14 +351,15 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
     fmt_mem(mem_fmt, sizeof(mem_fmt), total_ram);
 
     attrset(COLOR_PAIR(CP_GREEN) | A_BOLD);
+    mvaddch(0, 0, ACS_ULCORNER);
     char hdr[128];
     int hdr_len = snprintf(hdr, sizeof(hdr),
-                           "\u250c ProcLens v%s Procs: %d Total: %s Sort: %s %.1fs",
+                           " ProcLens v%s Procs: %d Total: %s Sort: %s %.1fs",
                            VERSION, display_n, mem_fmt,
                            sort_labels[ui->sort_mode], intervals[ui->interval_idx]);
-    if (hdr_len > maxx - 12) hdr_len = maxx - 12;
+    if (hdr_len > maxx - 13) hdr_len = maxx - 13;
     if (hdr_len < 0) hdr_len = 0;
-    mvprintw(0, 0, "%.*s", hdr_len, hdr);
+    mvprintw(0, 1, "%.*s", hdr_len, hdr);
     attrset(COLOR_PAIR(CP_YELLOW));
     mvprintw(0, maxx - 11, "[q] quit");
     attrset(A_NORMAL);
