@@ -174,7 +174,7 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     for (int i = 0; i < result.count; i++) {
         if (filter_active && !strstr((*procs)[i].name, ui->filter)) continue;
         if (display_n != i)
-            memmove(&(*procs)[display_n], &(*procs)[i], sizeof(Process));
+            (*procs)[display_n] = (*procs)[i];
         display_n++;
     }
     result.count = display_n;
