@@ -259,40 +259,37 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
         case 's':
             ui->sort_mode = (ui->sort_mode + 1) % SORT_COUNT;
             return INPUT_BREAK;
-        }
-
-        if (ch == '/') {
+        case '/':
             ui->filter_active = 1;
             ui->filter[0] = '\0';
             ui->filter_len = 0;
             curs_set(1);
             return INPUT_BREAK;
-        }
-        if (ch == 'k' && display_n > 0) {
-            int target = procs[ui->selected].pid;
-            curs_set(1);
-            mvprintw(maxy - 1, 0, " Kill PID %d? (y/N): ", target);
-            clrtoeol();
-            refresh();
-            int ans = getch();
-            curs_set(0);
-            if (ans == 'y' || ans == 'Y')
-                kill(target, SIGTERM);
+        case 'k':
+            if (display_n > 0) {
+                int target = procs[ui->selected].pid;
+                curs_set(1);
+                mvprintw(maxy - 1, 0, " Kill PID %d? (y/N): ", target);
+                clrtoeol();
+                refresh();
+                int ans = getch();
+                curs_set(0);
+                if (ans == 'y' || ans == 'Y')
+                    kill(target, SIGTERM);
+            }
             return INPUT_BREAK;
-        }
-        if (ch == '+' || ch == '=') {
-            if (ui->interval_idx < (int)ARRAY_SIZE(intervals) - 1) ui->interval_idx++;
+        case '+':
+        case '=':
+            if (ui->interval_idx < (int)ARRAY_SIZE(intervals) - 1)
+                ui->interval_idx++;
             return INPUT_BREAK;
-        }
-        if (ch == '-') {
+        case '-':
             if (ui->interval_idx > 0) ui->interval_idx--;
             return INPUT_BREAK;
-        }
-        if (ch == KEY_RESIZE) {
+        case KEY_RESIZE:
             if (ui->filter_active) curs_set(0);
             return INPUT_BREAK;
-        }
-        if (ch == '?') {
+        case '?':
             ui->show_help = !ui->show_help;
             return INPUT_BREAK;
         }
