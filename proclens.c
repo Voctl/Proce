@@ -159,10 +159,10 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
             if (unlikely(!tmp)) break;
             arr = tmp;
         }
-        if (parse_proc(pid, &arr[result.count].rss_kb, arr[result.count].name) == 0) {
-            if (arr[result.count].rss_kb == 0) continue;
-            arr[result.count].pid = pid;
-            result.total_ram += arr[result.count].rss_kb;
+        Process *p = &arr[result.count];
+        if (parse_proc(pid, &p->rss_kb, p->name) == 0 && p->rss_kb != 0) {
+            p->pid = pid;
+            result.total_ram += p->rss_kb;
             result.count++;
         }
     }
