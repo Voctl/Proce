@@ -558,12 +558,41 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
     refresh();
 }
 
-int main(void) {
+static double absd(double d) {
+    return d < 0 ? -d : d;
+}
+
+int main(int argc, char **argv) {
     long ps = sysconf(_SC_PAGESIZE);
     if (ps > 0) kb_per_page = (unsigned long)ps / 1024ul;
     long clk = sysconf(_SC_CLK_TCK);
     if (clk > 0) hz = clk;
     read_file_num("/proc/meminfo", "MemTotal:", &mem_total_kb);
+
+    int opt;
+    double want_interval = -1.0;
+    const char *sort_arg = NULL;
+    const char *filter_arg = NULL;
+    while ((opt = getopt(argc, argv, "d:s:f:vh")) != -1) {
+        switch (opt) {
+        case 'd':
+            want_interval = strtod(optarg, NULL);
+            break;
+        case 's':
+            sort_arg = optarg;
+            break;
+        case 'f':
+            filter_arg = optarg;
+            break;
+        case 'v':
+            printf("ProcLens v%s\n", VERSION);
+            return 0;
+        default:
+            fprintf(stderr,
+                    "Usage: proclens [-d sec] [-s rss|pid|name|cpu] [-f str] [-v]\n");
+            return 1;
+        }
+    }
 
     struct sigaction sa = { .sa_handler = handle_signal };
     sigemptyset(&sa.sa_mask);
@@ -581,6 +610,30 @@ int main(void) {
         .sort_mode = SORT_RSS,
         .interval_idx = 1
     };
+
+    if (want_interval >= 0.0) {
+        int bi = 0;
+        for (int i = 1; i < (int)ARRAY_SIZE(intervals); i++)
+            if (absd(intervals[i] - want_interval) < absd(intervals[bi] - want_interval))
+                bi = i;
+        ui.interval_idx = bi;
+    }
+    if (sort_arg != NULL) {
+        static const struct { const char *n; int m; } sm[] = {
+            {"rss", SORT_RSS}, {"pid", SORT_PID},
+            {"name", SORT_NAME}, {"cpu", SORT_CPU}
+        };
+        for (int i = 0; i < (int)ARRAY_SIZE(sm); i++)
+            if (strcmp(sort_arg, sm[i].n) == 0)
+                ui.sort_mode = sm[i].m;
+    }
+    if (filter_arg != NULL) {
+        size_t fl = strlen(filter_arg);
+        if (fl >= sizeof(ui.filter)) fl = sizeof(ui.filter) - 1;
+        memcpy(ui.filter, filter_arg, fl);
+        ui.filter[fl] = '\0';
+        ui.filter_len = (int)fl;
+    }
 
     unsigned long long last_hash = 0;
     int need_scan = 1;
