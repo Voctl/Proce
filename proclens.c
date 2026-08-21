@@ -30,7 +30,7 @@ typedef struct {
     int show_help;
 } UIState;
 
-enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_COUNT };
+enum { SORT_RSS, SORT_PID, SORT_NAME, SORT_CPU, SORT_COUNT };
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define likely(x)   __builtin_expect(!!(x), 1)
@@ -154,10 +154,31 @@ static int cmp_name_asc(const void *a, const void *b) {
     return strcmp(pa->name, pb->name);
 }
 
+static int cmp_cpu_desc(const void *a, const void *b) {
+    float fa = (*(const Process *const *)a)->cpu_pct;
+    float fb = (*(const Process *const *)b)->cpu_pct;
+    return (fa < fb) - (fb < fa);
+}
+
 static int (* const cmp_funcs[])(const void *, const void *) = {
-    cmp_rss_desc, cmp_pid_asc, cmp_name_asc
+    cmp_rss_desc, cmp_pid_asc, cmp_name_asc, cmp_cpu_desc
 };
-static const char * const sort_labels[] = {"RSS", "PID", "Name"};
+static const char * const sort_labels[] = {"RSS", "PID", "Name", "CPU"};
+
+static unsigned long mem_total_kb;
+
+static void read_meminfo_total(void) {
+    int fd = open("/proc/meminfo", O_RDONLY);
+    if (fd < 0) return;
+    char buf[256];
+    ssize_t n = read(fd, buf, sizeof(buf) - 1);
+    close(fd);
+    if (n <= 0) return;
+    buf[n] = '\0';
+    const char *p = strstr(buf, "MemTotal:");
+    if (p != NULL)
+        mem_total_kb = strtoul(p + 9, NULL, 10);
+}
 
 static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
     if (kb >= RSS_GIB)
@@ -438,7 +459,7 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
     mvaddch(1, maxx - 1, ACS_RTEE);
 
     attrset(COLOR_PAIR(CP_CYAN) | A_BOLD);
-    mvprintw(1, 2, "%-7s %11s  %s", "PID", "RSS", "NAME");
+    mvprintw(1, 2, "%-7s %5s %4s %11s  %s", "PID", "CPU%", "MEM", "RSS", "NAME");
     attrset(A_NORMAL);
 
     mvhline(2, 0, ACS_HLINE, maxx);
@@ -462,8 +483,12 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
                                 : COLOR_PAIR(CP_YELLOW);
 
         fmt_mem(mem, sizeof(mem), p->rss_kb);
+        double mem_pct = (mem_total_kb != 0)
+                             ? (double)p->rss_kb * 100.0 / (double)mem_total_kb
+                             : 0.0;
         char line[96];
-        snprintf(line, sizeof(line), "%-7d %11s  %s", p->pid, mem, p->name);
+        snprintf(line, sizeof(line), "%-7d %5.1f %4.1f %11s  %s",
+                 p->pid, (double)p->cpu_pct, mem_pct, mem, p->name);
 
         RowCache *c = &row_cache[row];
         if (!c->used || c->attr != attr || strcmp(c->txt, line) != 0) {
@@ -532,6 +557,7 @@ int main(void) {
     if (ps > 0) kb_per_page = (unsigned long)ps / 1024ul;
     long clk = sysconf(_SC_CLK_TCK);
     if (clk > 0) hz = clk;
+    read_meminfo_total();
 
     struct sigaction sa = { .sa_handler = handle_signal };
     sigemptyset(&sa.sa_mask);
