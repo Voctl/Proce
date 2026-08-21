@@ -165,19 +165,24 @@ static int (* const cmp_funcs[])(const void *, const void *) = {
 };
 static const char * const sort_labels[] = {"RSS", "PID", "Name", "CPU"};
 
-static unsigned long mem_total_kb;
+static double mem_total_kb;
+static double load_avg;
 
-static void read_meminfo_total(void) {
-    int fd = open("/proc/meminfo", O_RDONLY);
+static void read_file_num(const char *path, const char *key, double *out) {
+    int fd = open(path, O_RDONLY);
     if (fd < 0) return;
     char buf[256];
     ssize_t n = read(fd, buf, sizeof(buf) - 1);
     close(fd);
     if (n <= 0) return;
     buf[n] = '\0';
-    const char *p = strstr(buf, "MemTotal:");
-    if (p != NULL)
-        mem_total_kb = strtoul(p + 9, NULL, 10);
+    const char *p = buf;
+    if (key != NULL) {
+        p = strstr(buf, key);
+        if (p == NULL) return;
+        p += strlen(key);
+    }
+    *out = strtod(p, NULL);
 }
 
 static void fmt_mem(char *buf, size_t sz, unsigned long kb) {
@@ -220,6 +225,7 @@ typedef struct {
 static ScanResult scan_processes(Process **procs, const Process ***view,
                                  int *cap, int *vcap, const UIState *ui) {
     ScanResult result = {0, 0};
+    read_file_num("/proc/loadavg", NULL, &load_avg);
     DIR *dp = opendir("/proc");
     if (unlikely(!dp)) return result;
 
@@ -444,8 +450,8 @@ static void render_ui(const Process **procs, int display_n, unsigned long total_
     mvaddch(0, 0, ACS_ULCORNER);
     char hdr[128];
     int hdr_len = snprintf(hdr, sizeof(hdr),
-                           " ProcLens v%s Procs: %d Total: %s Sort: %s %.1fs",
-                           VERSION, display_n, mem_fmt,
+                           " ProcLens v%s Procs: %d Total: %s L:%.2f Sort: %s %.1fs",
+                           VERSION, display_n, mem_fmt, load_avg,
                            sort_labels[ui->sort_mode], intervals[ui->interval_idx]);
     if (hdr_len > maxx - 13) hdr_len = maxx - 13;
     if (hdr_len < 0) hdr_len = 0;
@@ -557,7 +563,7 @@ int main(void) {
     if (ps > 0) kb_per_page = (unsigned long)ps / 1024ul;
     long clk = sysconf(_SC_CLK_TCK);
     if (clk > 0) hz = clk;
-    read_meminfo_total();
+    read_file_num("/proc/meminfo", "MemTotal:", &mem_total_kb);
 
     struct sigaction sa = { .sa_handler = handle_signal };
     sigemptyset(&sa.sa_mask);
