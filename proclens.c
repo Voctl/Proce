@@ -399,11 +399,6 @@ int main(void) {
         int action = handle_input(&ui, procs, display_n, maxy);
 
         if (action == INPUT_QUIT) break;
-        if (action == INPUT_BREAK && ui.filter_active == 0) {
-            /* check if it was a resize */
-            continue;
-        }
-
         if (action == INPUT_BREAK) continue;
 
         render_ui(procs, display_n, total_ram, &ui, maxy, maxx);
