@@ -390,7 +390,11 @@ int main(void) {
         if (ui.selected >= display_n) ui.selected = display_n ? display_n - 1 : 0;
         if (ui.selected < 0) ui.selected = 0;
 
-        timeout((int)(intervals[ui.interval_idx] * 1000));
+        static int last_interval = -1;
+        if (ui.interval_idx != last_interval) {
+            last_interval = ui.interval_idx;
+            timeout((int)(intervals[ui.interval_idx] * 1000));
+        }
 
         int action = handle_input(&ui, procs, display_n, maxy);
 
