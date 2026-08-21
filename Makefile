@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wshadow -Wconversion -O2
-LDFLAGS = -lncurses
+CFLAGS = -Wall -Wextra -Wshadow -Wconversion -O2 -flto
+LDFLAGS = -flto -lncurses
 PREFIX = /usr/local
 
 proclens: proclens.c
