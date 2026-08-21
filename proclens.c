@@ -232,6 +232,22 @@ static ScanResult scan_processes(Process **procs, const Process ***view,
 
 enum { INPUT_NONE, INPUT_BREAK, INPUT_CONTINUE, INPUT_QUIT, INPUT_REDRAW };
 
+static unsigned long long snap_hash(const Process **v, int n, unsigned long total,
+                                    const UIState *ui) {
+    unsigned long long h = 1469598103934665603ull;
+#define SNAP_MIX(x) do { h ^= (unsigned long long)(x); h *= 1099511628211ull; } while (0)
+    SNAP_MIX(total);
+    SNAP_MIX((unsigned)n);
+    SNAP_MIX((unsigned)ui->selected);
+    SNAP_MIX((unsigned)ui->sort_mode);
+    for (int i = 0; i < n; i++) {
+        SNAP_MIX((unsigned)v[i]->pid);
+        SNAP_MIX(v[i]->rss_kb);
+    }
+#undef SNAP_MIX
+    return h;
+}
+
 typedef struct {
     char txt[96];
     int attr;
@@ -462,9 +478,15 @@ int main(void) {
         .interval_idx = 1
     };
 
+    unsigned long long last_hash = 0;
+
     while (running) {
         int maxy, maxx;
         getmaxyx(stdscr, maxy, maxx);
+        static int last_maxy = -1, last_maxx = -1;
+        int resized = (maxy != last_maxy || maxx != last_maxx);
+        last_maxy = maxy;
+        last_maxx = maxx;
         if (unlikely(maxx < MIN_COLS || maxy < MIN_ROWS)) {
             erase();
             mvprintw(0, 0, "Terminal too small (%dx%d), need at least %dx%d", maxx, maxy, MIN_COLS, MIN_ROWS);
@@ -489,13 +511,18 @@ int main(void) {
         int action = handle_input(&ui, view, display_n, maxy);
 
         if (action == INPUT_QUIT) break;
-        if (action == INPUT_REDRAW) {
+        if (action == INPUT_REDRAW || resized) {
+            last_hash = snap_hash(view, display_n, total_ram, &ui);
             render_ui(view, display_n, total_ram, &ui, maxy, maxx);
             continue;
         }
         if (action == INPUT_BREAK) continue;
 
-        render_ui(view, display_n, total_ram, &ui, maxy, maxx);
+        unsigned long long h = snap_hash(view, display_n, total_ram, &ui);
+        if (h != last_hash) {
+            last_hash = h;
+            render_ui(view, display_n, total_ram, &ui, maxy, maxx);
+        }
     }
 
     free(procs);
