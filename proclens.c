@@ -246,20 +246,21 @@ static int handle_input(UIState *ui, const Process *procs, int display_n, int ma
             return INPUT_BREAK;
         }
 
-        if (ch == 'q')
+        switch (ch) {
+        case 'q':
             return INPUT_QUIT;
-        if (ch == KEY_UP) {
+        case KEY_UP:
             if (ui->selected > 0) ui->selected--;
             return INPUT_BREAK;
-        }
-        if (ch == KEY_DOWN || ch == 'j') {
+        case KEY_DOWN:
+        case 'j':
             if (ui->selected < display_n - 1) ui->selected++;
             return INPUT_BREAK;
-        }
-        if (ch == 's') {
+        case 's':
             ui->sort_mode = (ui->sort_mode + 1) % SORT_COUNT;
             return INPUT_BREAK;
         }
+
         if (ch == '/') {
             ui->filter_active = 1;
             ui->filter[0] = '\0';
