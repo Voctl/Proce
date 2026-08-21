@@ -71,7 +71,18 @@ static const char *match_key(const char *line, const char *key) {
 
 static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name) {
     char path[24], line[96];
-    snprintf(path, sizeof(path), "/proc/%d/status", pid);
+    memcpy(path, "/proc/", 6);
+    char *w = path + 6;
+    unsigned u = (unsigned)pid;
+    char digits[8];
+    int nd = 0;
+    do {
+        digits[nd++] = (char)('0' + (u % 10u));
+        u /= 10u;
+    } while (u != 0);
+    while (nd > 0)
+        *w++ = digits[--nd];
+    memcpy(w, "/status", 8);
     FILE *fp = fopen(path, "r");
     if (unlikely(!fp)) return -1;
     *rss = 0;
