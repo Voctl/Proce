@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 #include <ncurses.h>
 #include <signal.h>
 
@@ -12,8 +13,10 @@
 #define VERSION "1.0.0"
 
 typedef struct {
-    int pid;
     unsigned long rss_kb;
+    unsigned long cpu_ticks;
+    int pid;
+    float cpu_pct;
     char name[NAME_MAX_LEN + 1];
 } Process;
 
@@ -66,7 +69,8 @@ static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 static unsigned long kb_per_page = 4;
 
 /* /proc/<pid>/stat: "pid (comm) state ... rss" — status-dan ~4x kicik fayl */
-static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name) {
+/* /proc/<pid>/stat: "pid (comm) state ... utime stime ... rss" */
+static int parse_proc(int pid, Process *restrict p) {
     char path[24], buf[1024];
     memcpy(path, "/proc/", 6);
     char *w = path + 6;
@@ -95,20 +99,24 @@ static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name)
     int n = 0;
     const char *v = lp + 1;
     while (n < NAME_MAX_LEN && v + n < rp) {
-        name[n] = v[n];
+        p->name[n] = v[n];
         n++;
     }
     if (unlikely(n == 0)) return -1;
-    name[n] = '\0';
+    p->name[n] = '\0';
 
-    const char *p = rp + 1;
-    for (int f = 0; f < 21; f++) {
-        while (*p == ' ') p++;
-        if (unlikely(*p == '\0')) return -1;
-        while (*p != ' ' && *p != '\0') p++;
+    const char *q = rp + 1;
+    unsigned long utime = 0, stime = 0;
+    for (int f = 1; f <= 22; f++) {
+        while (*q == ' ') q++;
+        if (unlikely(*q == '\0')) return -1;
+        const char *tok = q;
+        while (*q != ' ' && *q != '\0') q++;
+        if (f == 12) utime = strtoul(tok, NULL, 10);
+        else if (f == 13) stime = strtoul(tok, NULL, 10);
+        else if (f == 22) p->rss_kb = strtoul(tok, NULL, 10) * kb_per_page;
     }
-    while (*p == ' ') p++;
-    *rss = strtoul(p, NULL, 10) * kb_per_page;
+    p->cpu_ticks = utime + stime;
     return 0;
 }
 
@@ -192,7 +200,7 @@ static ScanResult scan_processes(Process **procs, const Process ***view,
             arr = tmp;
         }
         Process *p = &arr[result.count];
-        if (parse_proc(pid, &p->rss_kb, p->name) == 0 && p->rss_kb != 0) {
+        if (parse_proc(pid, p) == 0 && p->rss_kb != 0) {
             p->pid = pid;
             result.total_ram += p->rss_kb;
             result.count++;
