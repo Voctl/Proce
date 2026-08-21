@@ -3,6 +3,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <ncurses.h>
 #include <signal.h>
 
@@ -62,15 +63,11 @@ static void handle_signal(int sig) {
 
 static const double intervals[] = {0.5, 1.0, 2.0, 5.0};
 
-static const char *match_key(const char *line, const char *key) {
-    while (*key != '\0') {
-        if (*line++ != *key++) return NULL;
-    }
-    return line;
-}
+static unsigned long kb_per_page = 4;
 
+/* /proc/<pid>/stat: "pid (comm) state ... rss" — status-dan ~4x kicik fayl */
 static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name) {
-    char path[24], line[96];
+    char path[24], buf[1024];
     memcpy(path, "/proc/", 6);
     char *w = path + 6;
     unsigned u = (unsigned)pid;
@@ -82,38 +79,36 @@ static int parse_proc(int pid, unsigned long *restrict rss, char *restrict name)
     } while (u != 0);
     while (nd > 0)
         *w++ = digits[--nd];
-    memcpy(w, "/status", 8);
-    FILE *fp = fopen(path, "r");
-    if (unlikely(!fp)) return -1;
-    *rss = 0;
-    name[0] = '\0';
-    int found = 0;
-    while (fgets(line, sizeof(line), fp) && found < 2) {
-        const char *v = match_key(line, "Name:");
-        if (v != NULL) {
-            while (*v == ' ' || *v == '\t') v++;
-            int n = 0;
-            while (n < NAME_MAX_LEN && v[n] != '\0' && v[n] != '\n') {
-                name[n] = v[n];
-                n++;
-            }
-            if (n > 0) {
-                name[n] = '\0';
-                found++;
-            }
-        } else {
-            const char *vs = match_key(line, "VmRSS:");
-            if (vs != NULL) {
-                char *end;
-                unsigned long kb = strtoul(vs, &end, 10);
-                if (end != vs) {
-                    *rss = kb;
-                    found++;
-                }
-            }
-        }
+    memcpy(w, "/stat", 6);
+
+    int fd = open(path, O_RDONLY);
+    if (unlikely(fd < 0)) return -1;
+    ssize_t len = read(fd, buf, sizeof(buf) - 1);
+    close(fd);
+    if (unlikely(len <= 0)) return -1;
+    buf[len] = '\0';
+
+    char *lp = strchr(buf, '(');
+    char *rp = lp ? strrchr(lp + 1, ')') : NULL;
+    if (unlikely(!lp || !rp)) return -1;
+
+    int n = 0;
+    const char *v = lp + 1;
+    while (n < NAME_MAX_LEN && v + n < rp) {
+        name[n] = v[n];
+        n++;
     }
-    fclose(fp);
+    if (unlikely(n == 0)) return -1;
+    name[n] = '\0';
+
+    const char *p = rp + 1;
+    for (int f = 0; f < 21; f++) {
+        while (*p == ' ') p++;
+        if (unlikely(*p == '\0')) return -1;
+        while (*p != ' ' && *p != '\0') p++;
+    }
+    while (*p == ' ') p++;
+    *rss = strtoul(p, NULL, 10) * kb_per_page;
     return 0;
 }
 
@@ -389,6 +384,9 @@ static void render_ui(const Process *procs, int display_n, unsigned long total_r
 }
 
 int main(void) {
+    long ps = sysconf(_SC_PAGESIZE);
+    if (ps > 0) kb_per_page = (unsigned long)ps / 1024ul;
+
     struct sigaction sa = { .sa_handler = handle_signal };
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
