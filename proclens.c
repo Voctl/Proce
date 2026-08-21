@@ -119,7 +119,7 @@ static void init_ncurses(void) {
     noecho();
     curs_set(0);
     keypad(stdscr, TRUE);
-    timeout(1000);
+    set_escdelay(25);
 
     if (!has_colors()) {
         endwin();
