@@ -480,6 +480,9 @@ int main(void) {
     };
 
     unsigned long long last_hash = 0;
+    int need_scan = 1;
+    int display_n = 0;
+    unsigned long total_ram = 0;
 
     while (running) {
         int maxy, maxx;
@@ -496,12 +499,15 @@ int main(void) {
             continue;
         }
 
-        ScanResult scan = scan_processes(&procs, &view, &cap, &vcap, &ui);
-        int display_n = scan.count;
-        unsigned long total_ram = scan.total_ram;
-
-        if (ui.selected >= display_n) ui.selected = display_n ? display_n - 1 : 0;
-        if (ui.selected < 0) ui.selected = 0;
+        if (need_scan) {
+            ScanResult scan = scan_processes(&procs, &view, &cap, &vcap, &ui);
+            display_n = scan.count;
+            total_ram = scan.total_ram;
+            if (ui.selected >= display_n)
+                ui.selected = display_n ? display_n - 1 : 0;
+            if (ui.selected < 0) ui.selected = 0;
+            need_scan = 0;
+        }
 
         static int last_interval = -1;
         if (ui.interval_idx != last_interval) {
@@ -509,21 +515,17 @@ int main(void) {
             timeout((int)(intervals[ui.interval_idx] * 1000));
         }
 
-        int action = handle_input(&ui, view, display_n, maxy);
-
-        if (action == INPUT_QUIT) break;
-        if (action == INPUT_REDRAW || resized) {
-            last_hash = snap_hash(view, display_n, total_ram, &ui);
-            render_ui(view, display_n, total_ram, &ui, maxy, maxx);
-            continue;
-        }
-        if (action == INPUT_BREAK) continue;
-
         unsigned long long h = snap_hash(view, display_n, total_ram, &ui);
-        if (h != last_hash) {
+        if (resized || h != last_hash) {
             last_hash = h;
             render_ui(view, display_n, total_ram, &ui, maxy, maxx);
         }
+
+        int action = handle_input(&ui, view, display_n, maxy);
+
+        if (action == INPUT_QUIT) break;
+        if (action == INPUT_REDRAW) continue;
+        need_scan = 1;
     }
 
     free(procs);
