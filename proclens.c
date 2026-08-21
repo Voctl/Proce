@@ -332,21 +332,21 @@ static void render_ui(const Process *procs, int display_n, unsigned long total_r
 
     int row = 3;
     int avail_rows = maxy - 1;
+    char mem[24];
     for (int i = 0; i < display_n && row < avail_rows; i++) {
-        if (i == ui->selected) {
-            attrset(COLOR_PAIR(CP_HIGHLIGHT));
-        } else if (i % 2 == 0) {
-            attrset(COLOR_PAIR(CP_WHITE));
-        } else {
-            attrset(COLOR_PAIR(CP_YELLOW));
-        }
+        const Process *p = &procs[i];
+        int attr;
+        if (i == ui->selected)
+            attr = COLOR_PAIR(CP_HIGHLIGHT);
+        else if (p->rss_kb > RSS_GIB)
+            attr = COLOR_PAIR(CP_RED) | A_BOLD;
+        else
+            attr = (i % 2 == 0) ? COLOR_PAIR(CP_WHITE)
+                                : COLOR_PAIR(CP_YELLOW);
+        attrset(attr);
 
-        if (i != ui->selected && procs[i].rss_kb > RSS_GIB)
-            attrset(COLOR_PAIR(CP_RED) | A_BOLD);
-
-        char mem[24];
-        fmt_mem(mem, sizeof(mem), procs[i].rss_kb);
-        mvprintw(row, 2, "%-7d %11s  %s", procs[i].pid, mem, procs[i].name);
+        fmt_mem(mem, sizeof(mem), p->rss_kb);
+        mvprintw(row, 2, "%-7d %11s  %s", p->pid, mem, p->name);
         row++;
     }
 
