@@ -146,6 +146,7 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
     DIR *dp = opendir("/proc");
     if (unlikely(!dp)) return result;
 
+    Process *arr = *procs;
     struct dirent *entry;
     while ((entry = readdir(dp))) {
         const char *d = entry->d_name;
@@ -154,18 +155,19 @@ static ScanResult scan_processes(Process **procs, int *cap, const UIState *ui) {
         if (pid <= 0) continue;
         if (result.count >= *cap) {
             *cap = *cap ? *cap * 2 : 64;
-            Process *tmp = realloc(*procs, (size_t)*cap * sizeof(Process));
+            Process *tmp = realloc(arr, (size_t)*cap * sizeof(Process));
             if (unlikely(!tmp)) break;
-            *procs = tmp;
+            arr = tmp;
         }
-        if (parse_proc(pid, &(*procs)[result.count].rss_kb, (*procs)[result.count].name) == 0) {
-            if ((*procs)[result.count].rss_kb == 0) continue;
-            (*procs)[result.count].pid = pid;
-            result.total_ram += (*procs)[result.count].rss_kb;
+        if (parse_proc(pid, &arr[result.count].rss_kb, arr[result.count].name) == 0) {
+            if (arr[result.count].rss_kb == 0) continue;
+            arr[result.count].pid = pid;
+            result.total_ram += arr[result.count].rss_kb;
             result.count++;
         }
     }
     closedir(dp);
+    *procs = arr;
 
     qsort(*procs, (size_t)result.count, sizeof(Process), cmp_funcs[ui->sort_mode]);
 
